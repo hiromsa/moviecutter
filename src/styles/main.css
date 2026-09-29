@@ -516,10 +516,10 @@ body {
   margin-top: 3px;
 }
 
-/* タイムライン本体（トラック） */
+/* タイムライン本体（トラック） - 上段：映像、下段：音声にセパレート */
 .timeline-track-container {
   position: relative;
-  height: 68px;
+  height: 96px;
   background: var(--bg-timeline);
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -529,35 +529,39 @@ body {
   user-select: none;
 }
 
-/* サムネイルストリップ */
+/* 上段: 映像トラック（サムネイルストリップ） */
 .thumbnail-strip {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 54px;
   display: flex;
-  opacity: 0.65;
+  opacity: 0.95;
   pointer-events: none;
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .thumbnail-strip img {
   height: 100%;
   flex: 1;
   object-fit: cover;
-  border-right: 1px solid rgba(0, 0, 0, 0.45);
-  filter: brightness(0.92);
+  border-right: 1px solid rgba(0, 0, 0, 0.5);
 }
 
-/* 音声波形キャンバス (サムネイル下部に半透明ネオン発光で表示) */
+/* 下段: 音声トラック（オーディオ波形キャンバス） */
 .timeline-waveform-canvas {
   position: absolute;
-  top: 0;
+  top: 54px;
   left: 0;
   width: 100%;
-  height: 100%;
+  height: 42px;
   pointer-events: none;
   z-index: 4;
-  filter: drop-shadow(0 0 4px rgba(6, 182, 212, 0.45));
+  background: rgba(4, 7, 14, 0.85);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
 /* 選択範囲 (Range Selection) - ドラッグで範囲全体をスライド可能 */

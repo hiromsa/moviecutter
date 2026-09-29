@@ -508,7 +508,7 @@ export class Timeline {
   }
 
   /**
-   * タイムライン上に音声波形を描画
+   * タイムライン下段の音声トラック上に音声波形を描画
    */
   private renderWaveform(): void {
     const state = this.appState.getState();
@@ -516,8 +516,8 @@ export class Timeline {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = this.trackEl.clientWidth;
-    const height = this.trackEl.clientHeight;
+    const width = this.waveformCanvasEl.clientWidth || this.trackEl.clientWidth;
+    const height = this.waveformCanvasEl.clientHeight || 42;
 
     if (width <= 0 || height <= 0 || !state.audioPeaks || state.audioPeaks.length === 0) {
       canvas.width = 1;
@@ -535,25 +535,36 @@ export class Timeline {
     const peaks = state.audioPeaks;
     const totalBars = peaks.length;
     const barWidth = width / totalBars;
-    const maxWaveHeight = height * 0.52; // サムネイルの下半分（52%）に配置し、映像の視認性をキープ
+    const centerY = height / 2;
+    const maxWaveHeight = height * 0.86;
 
-    // グラデーション作成（シアン発光 〜 エメラルド）
-    const gradient = ctx.createLinearGradient(0, height - maxWaveHeight, 0, height);
-    gradient.addColorStop(0, 'rgba(6, 182, 212, 0.9)');
-    gradient.addColorStop(0.5, 'rgba(56, 189, 248, 0.7)');
-    gradient.addColorStop(1, 'rgba(16, 185, 129, 0.4)');
+    // ネオンシアングラデーション
+    const gradient = ctx.createLinearGradient(0, 2, 0, height - 2);
+    gradient.addColorStop(0, '#38bdf8');   // スカイブルー
+    gradient.addColorStop(0.5, '#06b6d4'); // シアン
+    gradient.addColorStop(1, '#10b981');   // エメラルド
 
-    ctx.fillStyle = gradient;
+    // センターガイドライン（薄い基準線）
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.fillRect(0, centerY - 0.5, width, 1);
 
     for (let i = 0; i < totalBars; i++) {
       const peak = peaks[i];
-      if (peak <= 0.005) continue;
-
-      const barH = Math.max(1.5, peak * maxWaveHeight);
       const x = i * barWidth;
-      const y = height - barH;
+      const w = Math.max(1, barWidth - 0.5);
 
-      ctx.fillRect(x, y, Math.max(1, barWidth - 0.5), barH);
+      if (peak <= 0.01) {
+        // 微小音・無音部
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.25)';
+        ctx.fillRect(x, centerY - 0.5, w, 1);
+        continue;
+      }
+
+      const barH = Math.max(2, peak * maxWaveHeight);
+      const y = centerY - barH / 2;
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, y, w, barH);
     }
   }
 }
