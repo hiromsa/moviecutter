@@ -545,6 +545,19 @@ body {
   flex: 1;
   object-fit: cover;
   border-right: 1px solid rgba(0, 0, 0, 0.45);
+  filter: brightness(0.92);
+}
+
+/* 音声波形キャンバス (サムネイル下部に半透明ネオン発光で表示) */
+.timeline-waveform-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 4;
+  filter: drop-shadow(0 0 4px rgba(6, 182, 212, 0.45));
 }
 
 /* 選択範囲 (Range Selection) - ドラッグで範囲全体をスライド可能 */

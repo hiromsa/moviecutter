@@ -10,6 +10,7 @@ export class Timeline {
   private rulerEl: HTMLElement;
   private trackEl: HTMLElement;
   private thumbnailStripEl: HTMLElement;
+  private waveformCanvasEl: HTMLCanvasElement;
   private rangeHighlightEl: HTMLElement;
   private inHandleEl: HTMLElement;
   private outHandleEl: HTMLElement;
@@ -56,6 +57,9 @@ export class Timeline {
 
     this.thumbnailStripEl = document.createElement('div');
     this.thumbnailStripEl.className = 'thumbnail-strip';
+
+    this.waveformCanvasEl = document.createElement('canvas');
+    this.waveformCanvasEl.className = 'timeline-waveform-canvas';
 
     this.rangeHighlightEl = document.createElement('div');
     this.rangeHighlightEl.className = 'timeline-range-highlight';
@@ -116,6 +120,7 @@ export class Timeline {
 
     // トラック構築
     this.trackEl.appendChild(this.thumbnailStripEl);
+    this.trackEl.appendChild(this.waveformCanvasEl);
     this.trackEl.appendChild(this.rangeHighlightEl);
     this.trackEl.appendChild(this.inHandleEl);
     this.trackEl.appendChild(this.outHandleEl);
@@ -127,6 +132,10 @@ export class Timeline {
 
     this.container.appendChild(this.headerBarEl);
     this.container.appendChild(this.viewportEl);
+
+    window.addEventListener('resize', () => {
+      this.renderWaveform();
+    });
 
     // イベント設定
     this.setupEvents(zoomOutBtn, zoomInBtn);
@@ -448,6 +457,10 @@ export class Timeline {
       this.updateRuler(state.duration, zoom);
     }
 
+    if (changedKey === 'audioPeaks' || changedKey === 'timelineZoom' || changedKey === 'videoFile' || !changedKey) {
+      requestAnimationFrame(() => this.renderWaveform());
+    }
+
     if (changedKey === 'thumbnails' || !changedKey) {
       this.thumbnailStripEl.innerHTML = '';
       for (const thumb of state.thumbnails) {
@@ -491,6 +504,56 @@ export class Timeline {
     // 再生中の自動スクロール（ユーザーが手動スクロール中でない場合）
     if (state.isPlaying && !this.isUserScrolling && zoom > 1.0) {
       this.scrollPlayheadIntoView();
+    }
+  }
+
+  /**
+   * タイムライン上に音声波形を描画
+   */
+  private renderWaveform(): void {
+    const state = this.appState.getState();
+    const canvas = this.waveformCanvasEl;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = this.trackEl.clientWidth;
+    const height = this.trackEl.clientHeight;
+
+    if (width <= 0 || height <= 0 || !state.audioPeaks || state.audioPeaks.length === 0) {
+      canvas.width = 1;
+      canvas.height = 1;
+      return;
+    }
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
+
+    ctx.clearRect(0, 0, width, height);
+
+    const peaks = state.audioPeaks;
+    const totalBars = peaks.length;
+    const barWidth = width / totalBars;
+    const maxWaveHeight = height * 0.52; // サムネイルの下半分（52%）に配置し、映像の視認性をキープ
+
+    // グラデーション作成（シアン発光 〜 エメラルド）
+    const gradient = ctx.createLinearGradient(0, height - maxWaveHeight, 0, height);
+    gradient.addColorStop(0, 'rgba(6, 182, 212, 0.9)');
+    gradient.addColorStop(0.5, 'rgba(56, 189, 248, 0.7)');
+    gradient.addColorStop(1, 'rgba(16, 185, 129, 0.4)');
+
+    ctx.fillStyle = gradient;
+
+    for (let i = 0; i < totalBars; i++) {
+      const peak = peaks[i];
+      if (peak <= 0.005) continue;
+
+      const barH = Math.max(1.5, peak * maxWaveHeight);
+      const x = i * barWidth;
+      const y = height - barH;
+
+      ctx.fillRect(x, y, Math.max(1, barWidth - 0.5), barH);
     }
   }
 }

@@ -1,5 +1,6 @@
 import { AppState, AppStateData } from '../state/AppState';
 import { VideoEngine } from '../core/VideoEngine';
+import { AudioEngine } from '../core/AudioEngine';
 import { Icons } from './icons';
 
 export class VideoPlayer {
@@ -135,6 +136,11 @@ export class VideoPlayer {
       // サムネイル生成をバックグラウンドで開始
       VideoEngine.generateThumbnails(url, duration, 14).then((thumbnails) => {
         this.appState.setThumbnails(thumbnails);
+      });
+
+      // 音声波形抽出をバックグラウンドで開始
+      AudioEngine.extractPeaks(file).then((peaks) => {
+        this.appState.setAudioPeaks(peaks);
       });
     } catch (err: any) {
       console.error(err);

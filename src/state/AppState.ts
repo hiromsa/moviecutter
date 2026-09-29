@@ -33,6 +33,7 @@ export interface AppStateData {
   ffmpegProgress: number;
   statusMessage: string;
   thumbnails: ThumbnailItem[];
+  audioPeaks: number[];
 }
 
 export type StateChangeListener = (state: AppStateData, changedKey?: keyof AppStateData) => void;
@@ -63,6 +64,7 @@ export class AppState {
     ffmpegProgress: 0,
     statusMessage: '動画ファイルを選択またはドラッグ＆ドロップしてください',
     thumbnails: [],
+    audioPeaks: [],
   };
 
   private listeners: Set<StateChangeListener> = new Set();
@@ -111,9 +113,11 @@ export class AppState {
     this.state.videoHeight = height;
     this.state.isPlaying = false;
     this.state.thumbnails = [];
+    this.state.audioPeaks = [];
     this.state.statusMessage = `「${file.name}」を読み込みました (${duration.toFixed(2)}s)`;
     this.notify('videoFile');
     this.notify('hasRange');
+    this.notify('audioPeaks');
   }
 
   public setCurrentTime(time: number): void {
@@ -319,5 +323,10 @@ export class AppState {
   public setStatusMessage(msg: string): void {
     this.state.statusMessage = msg;
     this.notify('statusMessage');
+  }
+
+  public setAudioPeaks(peaks: number[]): void {
+    this.state.audioPeaks = peaks;
+    this.notify('audioPeaks');
   }
 }
