@@ -18,6 +18,9 @@ export class Controls {
   private durationInput!: HTMLInputElement;
   private lockDurationBtn!: HTMLButtonElement;
   private durationInputField!: HTMLElement;
+  private clearRangeBtn!: HTMLButtonElement;
+  private quick3sBtn!: HTMLButtonElement;
+  private quick5sBtn!: HTMLButtonElement;
 
   constructor() {
     this.appState = AppState.getInstance();
@@ -80,23 +83,30 @@ export class Controls {
         </select>
       </div>
 
-      <!-- 時間入力 & 切り取り時間（長さ指定・ロック） -->
+      <!-- 時間入力 & 切り取り時間（長さ指定・ロック・クイック・クリア） -->
       <div class="time-inputs-wrapper">
         <div class="time-field" title="開始秒数">
           <label>IN</label>
-          <input type="number" id="startTimeInput" step="0.01" min="0" value="0.00">
+          <input type="number" id="startTimeInput" step="0.01" min="0" placeholder="--">
         </div>
         <div class="time-field" title="終了秒数">
           <label>OUT</label>
-          <input type="number" id="endTimeInput" step="0.01" min="0" value="0.00">
+          <input type="number" id="endTimeInput" step="0.01" min="0" placeholder="--">
         </div>
         <div class="time-field duration-input-field" id="durationInputField" title="切り取り時間 (秒) - 入力すると終了点が自動計算されます">
           <label>長さ</label>
-          <input type="number" id="durationInput" step="0.01" min="0.05" value="0.00">
+          <input type="number" id="durationInput" step="0.01" min="0.05" placeholder="--">
           <button id="lockDurationBtn" class="lock-duration-btn" title="時間をロック (長さを固定したまま範囲をドラッグ移動)">
             ${Icons.unlock}
           </button>
         </div>
+        <div class="quick-duration-group" title="ワンクリックで現在位置から指定秒数を選択">
+          <button id="quick3sBtn" class="btn btn-sm quick-preset-btn">3s</button>
+          <button id="quick5sBtn" class="btn btn-sm quick-preset-btn">5s</button>
+        </div>
+        <button id="clearRangeBtn" class="btn btn-icon clear-range-btn" title="選択範囲を解除 (Esc)">
+          ${Icons.close}
+        </button>
       </div>
     `;
 
@@ -115,6 +125,9 @@ export class Controls {
     this.durationInput = this.container.querySelector('#durationInput') as HTMLInputElement;
     this.lockDurationBtn = this.container.querySelector('#lockDurationBtn') as HTMLButtonElement;
     this.durationInputField = this.container.querySelector('#durationInputField') as HTMLElement;
+    this.clearRangeBtn = this.container.querySelector('#clearRangeBtn') as HTMLButtonElement;
+    this.quick3sBtn = this.container.querySelector('#quick3sBtn') as HTMLButtonElement;
+    this.quick5sBtn = this.container.querySelector('#quick5sBtn') as HTMLButtonElement;
 
     this.setupEvents(jumpInBtnControls, jumpOutBtnControls);
     this.appState.subscribe((state, key) => this.onStateChange(state, key, jumpInBtnControls, jumpOutBtnControls));
@@ -210,6 +223,20 @@ export class Controls {
       this.appState.toggleDurationLock();
     });
 
+    // 範囲クリアボタン
+    this.clearRangeBtn.addEventListener('click', () => {
+      this.appState.clearRange();
+    });
+
+    // クイック選択プリセット (3秒 / 5秒)
+    this.quick3sBtn.addEventListener('click', () => {
+      this.appState.setClipDuration(3.0);
+    });
+
+    this.quick5sBtn.addEventListener('click', () => {
+      this.appState.setClipDuration(5.0);
+    });
+
     // キーボードショートカット
     window.addEventListener('keydown', (e) => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
@@ -219,6 +246,9 @@ export class Controls {
       if (e.code === 'Space') {
         e.preventDefault();
         this.appState.togglePlay();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.appState.clearRange();
       } else if (e.key === '{' || (e.shiftKey && e.key === '[') || e.key === 'i' || e.key === 'I' || e.key === 'Home') {
         e.preventDefault();
         this.appState.jumpToStart();
@@ -227,7 +257,7 @@ export class Controls {
         this.appState.jumpToEnd();
       } else if (e.key === '[') {
         const state = this.appState.getState();
-        if (state.isDurationLocked) {
+        if (state.isDurationLocked && state.hasRange) {
           const len = state.endTime - state.startTime;
           this.appState.setRange(state.currentTime, state.currentTime + len);
         } else {
@@ -235,7 +265,7 @@ export class Controls {
         }
       } else if (e.key === ']') {
         const state = this.appState.getState();
-        if (state.isDurationLocked) {
+        if (state.isDurationLocked && state.hasRange) {
           const len = state.endTime - state.startTime;
           this.appState.setRange(state.currentTime - len, state.currentTime);
         } else {
@@ -269,6 +299,8 @@ export class Controls {
     jumpOutBtnControls?: HTMLButtonElement
   ): void {
     const hasVideo = state.videoFile !== null;
+    const hasRange = state.hasRange && hasVideo;
+
     this.playBtn.disabled = !hasVideo;
     this.prevFrameBtn.disabled = !hasVideo;
     this.nextFrameBtn.disabled = !hasVideo;
@@ -282,6 +314,9 @@ export class Controls {
     this.endTimeInput.disabled = !hasVideo;
     this.durationInput.disabled = !hasVideo;
     this.lockDurationBtn.disabled = !hasVideo;
+    this.clearRangeBtn.disabled = !hasRange;
+    this.quick3sBtn.disabled = !hasVideo;
+    this.quick5sBtn.disabled = !hasVideo;
 
     if (changedKey === 'isPlaying' || !changedKey) {
       this.playBtn.innerHTML = state.isPlaying ? Icons.pause : Icons.play;
@@ -299,21 +334,23 @@ export class Controls {
       }
     }
 
-    if (changedKey === 'startTime' || !changedKey) {
+    if (changedKey === 'startTime' || changedKey === 'hasRange' || !changedKey) {
       if (document.activeElement !== this.startTimeInput) {
-        this.startTimeInput.value = state.startTime.toFixed(2);
+        this.startTimeInput.value = hasRange ? state.startTime.toFixed(2) : '';
       }
     }
 
-    if (changedKey === 'endTime' || !changedKey) {
+    if (changedKey === 'endTime' || changedKey === 'hasRange' || !changedKey) {
       if (document.activeElement !== this.endTimeInput) {
-        this.endTimeInput.value = state.endTime.toFixed(2);
+        this.endTimeInput.value = hasRange ? state.endTime.toFixed(2) : '';
       }
     }
 
-    const duration = Math.max(0, state.endTime - state.startTime);
-    if (document.activeElement !== this.durationInput) {
-      this.durationInput.value = duration.toFixed(2);
+    if (changedKey === 'startTime' || changedKey === 'endTime' || changedKey === 'hasRange' || !changedKey) {
+      const duration = Math.max(0, state.endTime - state.startTime);
+      if (document.activeElement !== this.durationInput) {
+        this.durationInput.value = hasRange ? duration.toFixed(2) : '';
+      }
     }
 
     // ロック状態のUI反映

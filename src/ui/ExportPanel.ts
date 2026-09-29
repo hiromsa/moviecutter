@@ -319,12 +319,25 @@ export class ExportPanel {
 
   private onStateChange(state: AppStateData, _changedKey?: keyof AppStateData): void {
     const hasVideo = state.videoFile !== null;
+    const hasRange = state.hasRange && hasVideo;
     const isProcessing = state.ffmpegStatus === 'processing';
 
-    this.cutVideoBtn.disabled = !hasVideo || isProcessing;
+    this.cutVideoBtn.disabled = !hasRange || isProcessing;
+    if (!hasVideo) {
+      this.cutVideoBtn.innerHTML = `${Icons.scissors} カット保存`;
+      this.cutVideoBtn.title = '動画を読み込んでください';
+    } else if (!hasRange) {
+      this.cutVideoBtn.innerHTML = `${Icons.scissors} 範囲未選択`;
+      this.cutVideoBtn.title = 'タイムライン上をドラッグして切り取り範囲を指定してください';
+    } else {
+      const len = (state.endTime - state.startTime).toFixed(2);
+      this.cutVideoBtn.innerHTML = `${Icons.scissors} カット保存 (${len}s)`;
+      this.cutVideoBtn.title = '選択範囲を高画質・無劣化でMP4出力します';
+    }
+
     this.captureFrameBtn.disabled = !hasVideo;
     this.copyFrameBtn.disabled = !hasVideo;
-    this.captureLastFrameBtn.disabled = !hasVideo;
-    this.copyLastFrameBtn.disabled = !hasVideo;
+    this.captureLastFrameBtn.disabled = !hasRange;
+    this.copyLastFrameBtn.disabled = !hasRange;
   }
 }

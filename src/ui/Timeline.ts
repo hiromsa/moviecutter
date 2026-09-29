@@ -226,7 +226,7 @@ export class Timeline {
 
       const startX = e.clientX;
       const initialTime = this.getTimeFromMouseEvent(e);
-      const isLocked = this.appState.getState().isDurationLocked;
+      const isLocked = this.appState.getState().isDurationLocked && this.appState.getState().hasRange;
       const initialStart = this.appState.getState().startTime;
       const initialEnd = this.appState.getState().endTime;
       const rangeLen = Math.max(0.05, initialEnd - initialStart);
@@ -243,14 +243,14 @@ export class Timeline {
 
         if (isRangeDragging) {
           if (isLocked) {
-            // ロック時: クリックした差分だけ範囲全体をスライド移動
+            // ロック中かつ範囲既存時: クリックした差分だけ範囲全体をスライド移動
             const deltaX = moveEvt.clientX - startX;
             const deltaSec = rect.width > 0 ? (deltaX / rect.width) * duration : 0;
             const newStart = Math.max(0, Math.min(duration - rangeLen, initialStart + deltaSec));
             this.appState.setRange(newStart, newStart + rangeLen);
             this.appState.setCurrentTime(newStart);
           } else {
-            // 通常時: ドラッグ開始点〜現在点を選択範囲とする
+            // 通常時または初回範囲指定: ドラッグ開始点〜現在点を選択範囲とする
             const currentTime = this.getTimeFromMouseEvent(moveEvt);
             const s = Math.min(initialTime, currentTime);
             const end = Math.max(initialTime, currentTime);
@@ -458,24 +458,32 @@ export class Timeline {
       }
     }
 
-    // In, Out, Range の位置計算 (0% - 100%)
-    const inPercent = (state.startTime / duration) * 100;
-    const outPercent = (state.endTime / duration) * 100;
     const playheadPercent = (state.currentTime / duration) * 100;
 
-    // ハンドルとハイライトの位置更新（In/Outともに中央線がパーセント位置と完全一致）
-    this.inHandleEl.style.left = `${inPercent}%`;
-    this.outHandleEl.style.left = `${outPercent}%`;
+    const hasRange = state.hasRange && hasVideo;
+    this.inHandleEl.style.display = hasRange ? 'flex' : 'none';
+    this.outHandleEl.style.display = hasRange ? 'flex' : 'none';
+    this.rangeHighlightEl.style.display = hasRange ? 'block' : 'none';
 
-    this.rangeHighlightEl.style.left = `${inPercent}%`;
-    this.rangeHighlightEl.style.width = `${Math.max(0, outPercent - inPercent)}%`;
+    if (hasRange) {
+      // In, Out, Range の位置計算 (0% - 100%)
+      const inPercent = (state.startTime / duration) * 100;
+      const outPercent = (state.endTime / duration) * 100;
 
-    if (state.isDurationLocked) {
-      this.rangeHighlightEl.classList.add('locked');
-      this.rangeHighlightEl.title = '時間ロック中: ドラッグでこの範囲のままスライド移動できます';
-    } else {
-      this.rangeHighlightEl.classList.remove('locked');
-      this.rangeHighlightEl.title = 'ドラッグで選択範囲をスライド移動できます';
+      // ハンドルとハイライトの位置更新（In/Outともに中央線がパーセント位置と完全一致）
+      this.inHandleEl.style.left = `${inPercent}%`;
+      this.outHandleEl.style.left = `${outPercent}%`;
+
+      this.rangeHighlightEl.style.left = `${inPercent}%`;
+      this.rangeHighlightEl.style.width = `${Math.max(0, outPercent - inPercent)}%`;
+
+      if (state.isDurationLocked) {
+        this.rangeHighlightEl.classList.add('locked');
+        this.rangeHighlightEl.title = '時間ロック中: ドラッグでこの範囲のままスライド移動できます';
+      } else {
+        this.rangeHighlightEl.classList.remove('locked');
+        this.rangeHighlightEl.title = 'ドラッグで選択範囲をスライド移動できます';
+      }
     }
 
     this.playheadEl.style.left = `${playheadPercent}%`;

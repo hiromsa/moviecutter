@@ -18,6 +18,7 @@ export interface AppStateData {
   currentTime: number;
   startTime: number;
   endTime: number;
+  hasRange: boolean;
   isPlaying: boolean;
   isLoopingRange: boolean;
   playbackRate: number;
@@ -47,6 +48,7 @@ export class AppState {
     currentTime: 0,
     startTime: 0,
     endTime: 0,
+    hasRange: false,
     isPlaying: false,
     isLoopingRange: false,
     playbackRate: 1.0,
@@ -103,14 +105,15 @@ export class AppState {
     this.state.duration = duration;
     this.state.currentTime = 0;
     this.state.startTime = 0;
-    // デフォルトの終了時間は動画全体、もしくは初期クリップとして短めに設定可能
-    this.state.endTime = duration;
+    this.state.endTime = 0;
+    this.state.hasRange = false; // デフォルトは開始・終了なし（未選択）
     this.state.videoWidth = width;
     this.state.videoHeight = height;
     this.state.isPlaying = false;
     this.state.thumbnails = [];
     this.state.statusMessage = `「${file.name}」を読み込みました (${duration.toFixed(2)}s)`;
     this.notify('videoFile');
+    this.notify('hasRange');
   }
 
   public setCurrentTime(time: number): void {
@@ -118,8 +121,8 @@ export class AppState {
     if (Math.abs(this.state.currentTime - clamped) < 0.001) return;
     this.state.currentTime = clamped;
 
-    // 範囲ループ再生がONの場合のハンドリング
-    if (this.state.isLoopingRange && this.state.isPlaying) {
+    // 範囲ループ再生がONかつ範囲が選択されている場合のハンドリング
+    if (this.state.isLoopingRange && this.state.hasRange && this.state.isPlaying) {
       if (clamped >= this.state.endTime) {
         this.state.currentTime = this.state.startTime;
         this.notify('currentTime');
@@ -131,12 +134,26 @@ export class AppState {
   }
 
   public setStartTime(time: number): void {
+    if (!this.state.hasRange) {
+      // 範囲未選択時は、指定位置からデフォルト3秒（または動画末尾まで）の範囲を作成
+      const defaultLen = 3.0;
+      const end = Math.min(this.state.duration, time + defaultLen);
+      this.setRange(time, end);
+      return;
+    }
     const clamped = Math.max(0, Math.min(this.state.endTime - 0.05, time));
     this.state.startTime = clamped;
     this.notify('startTime');
   }
 
   public setEndTime(time: number): void {
+    if (!this.state.hasRange) {
+      // 範囲未選択時は、手前3秒から指定位置までの範囲を作成
+      const defaultLen = 3.0;
+      const start = Math.max(0, time - defaultLen);
+      this.setRange(start, time);
+      return;
+    }
     const clamped = Math.min(this.state.duration, Math.max(this.state.startTime + 0.05, time));
     this.state.endTime = clamped;
     this.notify('endTime');
@@ -147,6 +164,24 @@ export class AppState {
     const e = Math.max(s + 0.05, Math.min(end, this.state.duration));
     this.state.startTime = s;
     this.state.endTime = e;
+    const wasWithoutRange = !this.state.hasRange;
+    this.state.hasRange = true;
+    if (wasWithoutRange) {
+      this.notify('hasRange');
+    }
+    this.notify('startTime');
+    this.notify('endTime');
+  }
+
+  /**
+   * 選択範囲をクリア（開始・終了なしの状態に戻す）
+   */
+  public clearRange(): void {
+    if (!this.state.hasRange) return;
+    this.state.hasRange = false;
+    this.state.startTime = 0;
+    this.state.endTime = 0;
+    this.notify('hasRange');
     this.notify('startTime');
     this.notify('endTime');
   }
@@ -158,7 +193,7 @@ export class AppState {
     if (this.state.duration <= 0) return;
     const clampedDuration = Math.max(0.05, Math.min(this.state.duration, seconds));
 
-    let newStart = this.state.startTime;
+    let newStart = this.state.hasRange ? this.state.startTime : this.state.currentTime;
     let newEnd = newStart + clampedDuration;
 
     // もし動画の終端を超える場合は開始点を手前に寄せる
@@ -169,6 +204,11 @@ export class AppState {
 
     this.state.startTime = newStart;
     this.state.endTime = newEnd;
+    const wasWithoutRange = !this.state.hasRange;
+    this.state.hasRange = true;
+    if (wasWithoutRange) {
+      this.notify('hasRange');
+    }
     this.notify('startTime');
     this.notify('endTime');
   }
@@ -190,7 +230,7 @@ export class AppState {
    * 長さを固定したまま範囲全体を平行移動（スライド）
    */
   public moveRange(deltaSeconds: number): void {
-    if (this.state.duration <= 0) return;
+    if (!this.state.hasRange || this.state.duration <= 0) return;
     const len = this.state.endTime - this.state.startTime;
     let newStart = this.state.startTime + deltaSeconds;
     let newEnd = newStart + len;
@@ -244,11 +284,19 @@ export class AppState {
   }
 
   public jumpToStart(): void {
-    this.setCurrentTime(this.state.startTime);
+    if (this.state.hasRange) {
+      this.setCurrentTime(this.state.startTime);
+    } else {
+      this.setCurrentTime(0);
+    }
   }
 
   public jumpToEnd(): void {
-    this.setCurrentTime(this.state.endTime);
+    if (this.state.hasRange) {
+      this.setCurrentTime(this.state.endTime);
+    } else {
+      this.setCurrentTime(this.state.duration);
+    }
   }
 
   public stepFrame(direction: 1 | -1): void {

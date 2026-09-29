@@ -822,6 +822,65 @@ body {
   font-weight: 600;
 }
 
+/* プレースホルダー */
+.time-field input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
+/* クイック秒数プリセット & 解除ボタン */
+.quick-duration-group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(6, 10, 18, 0.45);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.quick-preset-btn {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quick-preset-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.2);
+  color: #ffffff;
+}
+
+.clear-range-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  background: rgba(6, 10, 18, 0.4);
+}
+
+.clear-range-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.clear-range-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
 /* エクスポート・アクションパネル */
 .export-panel-card {
   display: grid;
