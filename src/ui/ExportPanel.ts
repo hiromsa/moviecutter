@@ -10,7 +10,9 @@ export class ExportPanel {
 
   private cutVideoBtn!: HTMLButtonElement;
   private captureFrameBtn!: HTMLButtonElement;
+  private copyFrameBtn!: HTMLButtonElement;
   private captureLastFrameBtn!: HTMLButtonElement;
+  private copyLastFrameBtn!: HTMLButtonElement;
   private progressBarContainer!: HTMLElement;
   private progressBarFill!: HTMLElement;
 
@@ -47,40 +49,54 @@ export class ExportPanel {
         </div>
       </div>
 
-      <!-- ② 現在フレームをPNG保存 (AIリファレンス用) -->
+      <!-- ② 現在フレームをPNG保存 & クリップボードコピー -->
       <div class="action-card">
         <div class="action-card-header">
           <div class="action-icon-badge">
             ${Icons.camera}
           </div>
-          <span class="action-card-title">現在のフレームを保存</span>
+          <span class="action-card-title">現在のフレーム</span>
         </div>
-        <p class="action-card-desc">キャレットが指している位置の最高画質静止画(PNG)をダウンロードします。</p>
-        <button id="captureFrameBtn" class="btn" style="margin-top: 0.5rem;">
-          ${Icons.camera}
-          <span>現在フレーム (.png)</span>
-        </button>
+        <p class="action-card-desc">キャレット位置の最高画質静止画をファイル保存、またはクリップボードに直接コピーします。</p>
+        <div class="action-buttons-row">
+          <button id="captureFrameBtn" class="btn btn-sm" style="flex: 1;" title="PNG画像として保存">
+            ${Icons.download}
+            <span>PNG保存</span>
+          </button>
+          <button id="copyFrameBtn" class="btn btn-sm" title="クリップボードに画像をコピー (Ctrl+Vで貼り付け)">
+            ${Icons.copy}
+            <span>コピー</span>
+          </button>
+        </div>
       </div>
 
-      <!-- ③ 最終フレームを保存 (AIで続きを作る専用) -->
+      <!-- ③ 最終フレームを保存 & クリップボードコピー (AIで続きを作る専用) -->
       <div class="action-card">
         <div class="action-card-header">
           <div class="action-icon-badge purple">
             ${Icons.sparkles}
           </div>
-          <span class="action-card-title">選択範囲のラストフレーム</span>
+          <span class="action-card-title">選択範囲ラストフレーム</span>
         </div>
-        <p class="action-card-desc">選択範囲の最後の瞬間をワンクリック抽出。AIに読み込ませて「続きの動画」を生成するのに最適です。</p>
-        <button id="captureLastFrameBtn" class="btn btn-ai" style="margin-top: 0.5rem;">
-          ${Icons.sparkles}
-          <span>ラストフレーム抽出 (.png)</span>
-        </button>
+        <p class="action-card-desc">最後の瞬間を抽出。画像コピーでAI（Runway, Kling, Luma等）へ直接貼り付けて続きを生成可能！</p>
+        <div class="action-buttons-row">
+          <button id="captureLastFrameBtn" class="btn btn-ai btn-sm" style="flex: 1;" title="PNG画像として保存">
+            ${Icons.download}
+            <span>PNG保存</span>
+          </button>
+          <button id="copyLastFrameBtn" class="btn btn-sm" title="クリップボードに画像をコピー (Ctrl+Vで貼り付け)">
+            ${Icons.copy}
+            <span>コピー</span>
+          </button>
+        </div>
       </div>
     `;
 
     this.cutVideoBtn = this.container.querySelector('#cutVideoBtn') as HTMLButtonElement;
     this.captureFrameBtn = this.container.querySelector('#captureFrameBtn') as HTMLButtonElement;
+    this.copyFrameBtn = this.container.querySelector('#copyFrameBtn') as HTMLButtonElement;
     this.captureLastFrameBtn = this.container.querySelector('#captureLastFrameBtn') as HTMLButtonElement;
+    this.copyLastFrameBtn = this.container.querySelector('#copyLastFrameBtn') as HTMLButtonElement;
     this.progressBarContainer = this.container.querySelector('#progressBarContainer') as HTMLElement;
     this.progressBarFill = this.container.querySelector('#progressBarFill') as HTMLElement;
 
@@ -130,7 +146,7 @@ export class ExportPanel {
       }
     });
 
-    // 現在フレーム保存
+    // 現在フレーム保存 (ファイル保存)
     this.captureFrameBtn.addEventListener('click', async () => {
       const video = this.getVideoElement();
       const state = this.appState.getState();
@@ -146,7 +162,20 @@ export class ExportPanel {
       await this.saveFile(b, filename, 'image/png', 'png');
     });
 
-    // 選択範囲のラストフレーム保存
+    // 現在フレームをクリップボードにコピー
+    this.copyFrameBtn.addEventListener('click', async () => {
+      const video = this.getVideoElement();
+      const state = this.appState.getState();
+      if (!state.videoFile || !video) return;
+
+      const { blob } = VideoEngine.captureFrame(video);
+      const b = await blob;
+      if (!b) return;
+
+      await this.copyImageToClipboard(b, '現在のフレーム');
+    });
+
+    // 選択範囲のラストフレーム保存 (ファイル保存)
     this.captureLastFrameBtn.addEventListener('click', async () => {
       const state = this.appState.getState();
       if (!state.videoUrl || !state.videoFile) return;
@@ -155,7 +184,6 @@ export class ExportPanel {
       this.appState.setStatusMessage('ラストフレームを抽出中...');
 
       try {
-        // 終了時刻の直前フレーム（微小手前）を狙ってキャプチャ
         const targetTime = Math.max(0, state.endTime - 0.033);
         const blob = await VideoEngine.captureFrameAtTime(state.videoUrl, targetTime);
         if (blob) {
@@ -173,6 +201,53 @@ export class ExportPanel {
         this.captureLastFrameBtn.disabled = false;
       }
     });
+
+    // 選択範囲のラストフレームをクリップボードにコピー
+    this.copyLastFrameBtn.addEventListener('click', async () => {
+      const state = this.appState.getState();
+      if (!state.videoUrl || !state.videoFile) return;
+
+      this.copyLastFrameBtn.disabled = true;
+      this.appState.setStatusMessage('ラストフレームをコピー中...');
+
+      try {
+        const targetTime = Math.max(0, state.endTime - 0.033);
+        const blob = await VideoEngine.captureFrameAtTime(state.videoUrl, targetTime);
+        if (blob) {
+          await this.copyImageToClipboard(blob, 'ラストフレーム');
+        } else {
+          alert('ラストフレームの抽出に失敗しました。');
+        }
+      } catch (e: any) {
+        console.error(e);
+        alert('エラーが発生しました: ' + e.message);
+      } finally {
+        this.copyLastFrameBtn.disabled = false;
+      }
+    });
+  }
+
+  /**
+   * 画像をクリップボードに直接コピー (Ctrl+Vで貼り付け可能)
+   */
+  private async copyImageToClipboard(blob: Blob, label: string): Promise<void> {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.write) {
+        throw new Error('お使いのブラウザはクリップボード画像書き込みに対応していません。');
+      }
+
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'image/png': blob,
+        }),
+      ]);
+
+      this.showToast(`📋 ${label}をクリップボードにコピーしました！\n(Ctrl+V でAIツール等に直接貼り付けできます)`);
+      this.appState.setStatusMessage(`${label}をクリップボードにコピーしました`);
+    } catch (err: any) {
+      console.error('Clipboard copy failed:', err);
+      alert('クリップボードへの画像コピーに失敗しました: ' + (err.message || err));
+    }
   }
 
   /**
@@ -248,6 +323,8 @@ export class ExportPanel {
 
     this.cutVideoBtn.disabled = !hasVideo || isProcessing;
     this.captureFrameBtn.disabled = !hasVideo;
+    this.copyFrameBtn.disabled = !hasVideo;
     this.captureLastFrameBtn.disabled = !hasVideo;
+    this.copyLastFrameBtn.disabled = !hasVideo;
   }
 }

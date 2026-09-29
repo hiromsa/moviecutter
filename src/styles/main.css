@@ -601,7 +601,7 @@ body {
   transform: translateX(-50%); /* ズレを解消！Outも中央基準 */
 }
 
-/* 再生ヘッド (Playhead) - ルーラー上部まで拡張 */
+/* 再生ヘッド (Playhead) - 縦線は貫通させ、ルーラー上のつまみのみ掴めるように */
 .timeline-playhead {
   position: absolute;
   top: -28px; /* ルーラーの高さ分上まで突き出す */
@@ -609,8 +609,7 @@ body {
   width: 2px;
   background: var(--accent-playhead);
   z-index: 30;
-  pointer-events: auto; /* ルーラー上で掴めるように */
-  cursor: ew-resize;
+  pointer-events: none; /* トラック領域での範囲ドラッグを一切邪魔しない */
   box-shadow: 0 0 10px var(--accent-playhead-glow);
   transform: translateX(-50%); /* 中央合わせ */
 }
@@ -626,6 +625,7 @@ body {
   clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%);
   cursor: grab;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  pointer-events: auto; /* ルーラー上でのみ掴んでスクラブ可能 */
 }
 
 .playhead-head:active {
@@ -794,6 +794,13 @@ body {
   color: var(--text-muted);
   line-height: 1.5;
   flex: 1;
+}
+
+.action-buttons-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 /* ステータスバー */

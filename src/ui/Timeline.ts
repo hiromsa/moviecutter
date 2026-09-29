@@ -206,11 +206,17 @@ export class Timeline {
       window.addEventListener('mouseup', onMouseUp);
     };
 
+    // ルーラー領域クリック＆ドラッグ
     this.rulerEl.addEventListener('mousedown', startPlayheadScrubbing);
-    this.playheadEl.addEventListener('mousedown', (e) => {
-      e.stopPropagation();
-      startPlayheadScrubbing(e);
-    });
+
+    // 再生ヘッドのつまみ（ルーラー上の頭部）のみドラッグ可能に
+    const playheadHeadEl = this.playheadEl.querySelector('.playhead-head') as HTMLElement;
+    if (playheadHeadEl) {
+      playheadHeadEl.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        startPlayheadScrubbing(e);
+      });
+    }
 
     // ② トラック領域でのマウス操作：
     // ドラッグした時は「マウスダウン〜マウスアップ」で開始・終了を一括指定
