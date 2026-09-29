@@ -10,10 +10,17 @@ export interface ThumbnailItem {
   dataUrl: string;
 }
 
+export type MediaMode = 'video' | 'audio-still';
+
 export interface AppStateData {
+  mediaMode: MediaMode;
   videoFile: File | null;
   videoUrl: string | null;
   videoName: string;
+  audioFile: File | null;
+  imageFile: File | null;
+  imageBlob: Blob | null;
+  imageUrl: string | null;
   duration: number;
   currentTime: number;
   startTime: number;
@@ -44,9 +51,14 @@ export class AppState {
   private static instance: AppState;
 
   private state: AppStateData = {
+    mediaMode: 'video',
     videoFile: null,
     videoUrl: null,
     videoName: '',
+    audioFile: null,
+    imageFile: null,
+    imageBlob: null,
+    imageUrl: null,
     duration: 0,
     currentTime: 0,
     startTime: 0,
@@ -64,7 +76,7 @@ export class AppState {
     isDurationLocked: false,
     ffmpegStatus: 'unloaded',
     ffmpegProgress: 0,
-    statusMessage: '動画ファイルを選択またはドラッグ＆ドロップしてください',
+    statusMessage: '動画・音声・画像ファイルを選択またはドラッグ＆ドロップしてください',
     thumbnails: [],
     isLoadingThumbnails: false,
     audioPeaks: [],
@@ -105,9 +117,17 @@ export class AppState {
     if (this.state.videoUrl) {
       URL.revokeObjectURL(this.state.videoUrl);
     }
+    if (this.state.imageUrl) {
+      URL.revokeObjectURL(this.state.imageUrl);
+    }
+    this.state.mediaMode = 'video';
     this.state.videoFile = file;
     this.state.videoUrl = url;
     this.state.videoName = file.name;
+    this.state.audioFile = null;
+    this.state.imageFile = null;
+    this.state.imageBlob = null;
+    this.state.imageUrl = null;
     this.state.duration = duration;
     this.state.currentTime = 0;
     this.state.startTime = 0;
@@ -122,10 +142,89 @@ export class AppState {
     this.state.isLoadingWaveform = true;
     this.state.statusMessage = `「${file.name}」を読み込みました (${duration.toFixed(2)}s)`;
     this.notify('videoFile');
+    this.notify('mediaMode');
     this.notify('hasRange');
     this.notify('isLoadingThumbnails');
     this.notify('isLoadingWaveform');
     this.notify('audioPeaks');
+  }
+
+  /**
+   * 音声＋静止画モードのセットアップ
+   */
+  public setAudioWithStill(
+    audioFile: File,
+    audioUrl: string,
+    duration: number,
+    imageBlob: Blob,
+    imageUrl: string,
+    imageFile: File | null = null,
+    width: number = 1280,
+    height: number = 720
+  ): void {
+    if (this.state.videoUrl) {
+      URL.revokeObjectURL(this.state.videoUrl);
+    }
+    if (this.state.imageUrl && this.state.imageUrl !== imageUrl) {
+      URL.revokeObjectURL(this.state.imageUrl);
+    }
+    this.state.mediaMode = 'audio-still';
+    this.state.audioFile = audioFile;
+    this.state.videoFile = audioFile; // video要素での再生互換用
+    this.state.videoUrl = audioUrl;
+    this.state.videoName = audioFile.name;
+    this.state.imageFile = imageFile;
+    this.state.imageBlob = imageBlob;
+    this.state.imageUrl = imageUrl;
+    this.state.duration = duration;
+    this.state.currentTime = 0;
+    this.state.startTime = 0;
+    this.state.endTime = 0;
+    this.state.hasRange = false;
+    this.state.videoWidth = width;
+    this.state.videoHeight = height;
+    this.state.isPlaying = false;
+    this.state.thumbnails = [];
+    this.state.isLoadingThumbnails = false;
+    this.state.audioPeaks = [];
+    this.state.isLoadingWaveform = true;
+    this.state.statusMessage = `音声「${audioFile.name}」＋静止画を取り込みました (${duration.toFixed(2)}s)`;
+    this.notify('videoFile');
+    this.notify('mediaMode');
+    this.notify('imageUrl');
+    this.notify('hasRange');
+    this.notify('isLoadingThumbnails');
+    this.notify('isLoadingWaveform');
+  }
+
+  /**
+   * 静止画（カバー画像）の差し替え更新
+   */
+  public updateStillImage(
+    imageBlob: Blob,
+    imageUrl: string,
+    imageFile: File | null = null,
+    width: number = 1280,
+    height: number = 720
+  ): void {
+    if (this.state.imageUrl && this.state.imageUrl !== imageUrl) {
+      URL.revokeObjectURL(this.state.imageUrl);
+    }
+    this.state.imageFile = imageFile;
+    this.state.imageBlob = imageBlob;
+    this.state.imageUrl = imageUrl;
+    this.state.videoWidth = width;
+    this.state.videoHeight = height;
+    this.notify('imageUrl');
+  }
+
+  /**
+   * 最初から最後まで（0秒〜duration）を全選択
+   */
+  public selectAllRange(): void {
+    if (this.state.duration > 0) {
+      this.setRange(0, this.state.duration);
+    }
   }
 
   public setCurrentTime(time: number): void {

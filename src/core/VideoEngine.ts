@@ -191,4 +191,173 @@ export class VideoEngine {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
+
+  /**
+   * 音声ファイル専用の高品質デフォルトアートワーク画像をCanvasで自動生成
+   */
+  public static async createDefaultArtwork(
+    title: string,
+    durationStr: string,
+    width = 1280,
+    height = 720
+  ): Promise<{ blob: Blob; dataUrl: string }> {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D context not available');
+
+    // 1. バックグラウンドグラデーション
+    const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+    bgGrad.addColorStop(0, '#040711');
+    bgGrad.addColorStop(0.5, '#091322');
+    bgGrad.addColorStop(1, '#050a16');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // 2. ネオングロー円（アンビエントライト）
+    const radialCyan = ctx.createRadialGradient(width * 0.3, height * 0.45, 50, width * 0.3, height * 0.45, 450);
+    radialCyan.addColorStop(0, 'rgba(6, 182, 212, 0.22)');
+    radialCyan.addColorStop(1, 'rgba(6, 182, 212, 0)');
+    ctx.fillStyle = radialCyan;
+    ctx.fillRect(0, 0, width, height);
+
+    const radialPurple = ctx.createRadialGradient(width * 0.7, height * 0.55, 50, width * 0.7, height * 0.55, 450);
+    radialPurple.addColorStop(0, 'rgba(147, 51, 234, 0.2)');
+    radialPurple.addColorStop(1, 'rgba(147, 51, 234, 0)');
+    ctx.fillStyle = radialPurple;
+    ctx.fillRect(0, 0, width, height);
+
+    // 3. 中央のジャケットカード枠
+    const cardW = 420;
+    const cardH = 420;
+    const cardX = (width - cardW) / 2;
+    const cardY = 110;
+
+    // カードの影
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 15;
+
+    // カード本体
+    const cardGrad = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
+    cardGrad.addColorStop(0, 'rgba(15, 23, 42, 0.85)');
+    cardGrad.addColorStop(1, 'rgba(30, 41, 59, 0.75)');
+    ctx.fillStyle = cardGrad;
+    ctx.beginPath();
+    ctx.roundRect(cardX, cardY, cardW, cardH, 24);
+    ctx.fill();
+
+    // カード枠線
+    ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 4. アートワーク中央のオーディオ波形グラフィック
+    const centerX = cardX + cardW / 2;
+    const centerY = cardY + cardH / 2;
+    const barCount = 28;
+    const barWidth = 6;
+    const barGap = 6;
+    const totalW = barCount * (barWidth + barGap);
+    const startX = centerX - totalW / 2;
+
+    for (let i = 0; i < barCount; i++) {
+      const x = startX + i * (barWidth + barGap);
+      // サイン波状のバー
+      const factor = Math.sin((i / barCount) * Math.PI);
+      const barH = 20 + factor * 110;
+      const y = centerY - barH / 2;
+
+      const barGrad = ctx.createLinearGradient(0, y, 0, y + barH);
+      barGrad.addColorStop(0, '#06b6d4');
+      barGrad.addColorStop(0.5, '#3b82f6');
+      barGrad.addColorStop(1, '#a855f7');
+      ctx.fillStyle = barGrad;
+
+      ctx.beginPath();
+      ctx.roundRect(x, y, barWidth, barH, 3);
+      ctx.fill();
+    }
+
+    // 5. テキスト情報（タイトル・ロゴ）
+    ctx.textAlign = 'center';
+
+    // ブランドバッジ
+    ctx.font = '600 20px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#06b6d4';
+    ctx.fillText('MovieCutter Audio Studio', width / 2, cardY + cardH + 50);
+
+    // 曲名・ファイル名
+    ctx.font = 'bold 34px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#ffffff';
+    const displayTitle = title.length > 35 ? title.substring(0, 32) + '...' : title;
+    ctx.fillText(displayTitle, width / 2, cardY + cardH + 95);
+
+    // 時間コード
+    ctx.font = '500 20px "JetBrains Mono", monospace';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.fillText(`Audio Track  •  ${durationStr}`, width / 2, cardY + cardH + 130);
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const blob = await new Promise<Blob>((resolve) => {
+      canvas.toBlob((b) => resolve(b || new Blob()), 'image/png');
+    });
+
+    return { blob, dataUrl };
+  }
+
+  /**
+   * ユーザー指定の画像ファイルを読み込み、偶数サイズ（YUV420P準拠）に調整したBlobとDataUrlを返却
+   */
+  public static async loadImage(file: File): Promise<{ blob: Blob; dataUrl: string; width: number; height: number }> {
+    const objectUrl = URL.createObjectURL(file);
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        // H.264 YUV420P エンコードの制約で幅と高さは偶数である必要がある
+        const width = img.naturalWidth - (img.naturalWidth % 2);
+        const height = img.naturalHeight - (img.naturalHeight % 2);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+        }
+        URL.revokeObjectURL(objectUrl);
+
+        const dataUrl = canvas.toDataURL('image/png');
+        canvas.toBlob((b) => {
+          if (b) {
+            resolve({ blob: b, dataUrl, width, height });
+          } else {
+            reject(new Error('画像のBlob変換に失敗しました'));
+          }
+        }, 'image/png');
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('画像の読み込みに失敗しました'));
+      };
+      img.src = objectUrl;
+    });
+  }
+
+  /**
+   * 静止画モード用に同一画像のサムネイルリストを生成
+   */
+  public static generateStaticThumbnails(dataUrl: string, duration: number, count = 12): ThumbnailItem[] {
+    const items: ThumbnailItem[] = [];
+    const step = duration > 0 ? duration / count : 1;
+    for (let i = 0; i < count; i++) {
+      items.push({
+        time: i * step,
+        dataUrl,
+      });
+    }
+    return items;
+  }
 }

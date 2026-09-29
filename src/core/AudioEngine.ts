@@ -80,4 +80,38 @@ export class AudioEngine {
       return [];
     }
   }
+
+  /**
+   * 音声ファイルの再生時間（秒数）を取得
+   */
+  public static async getAudioDuration(file: File): Promise<number> {
+    const url = URL.createObjectURL(file);
+    try {
+      const audio = new Audio();
+      audio.preload = 'metadata';
+      audio.src = url;
+
+      const duration = await new Promise<number>((resolve, reject) => {
+        audio.onloadedmetadata = () => {
+          resolve(audio.duration);
+        };
+        audio.onerror = () => {
+          reject(new Error('Audio element could not read metadata'));
+        };
+      });
+      URL.revokeObjectURL(url);
+      return duration;
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      // フォールバック: Web Audio API
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const audioCtx = this.getAudioContext();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        return audioBuffer.duration;
+      } catch (err) {
+        throw new Error('音声ファイルの再生時間を取得できませんでした');
+      }
+    }
+  }
 }

@@ -101,6 +101,10 @@ export class HelpModal {
               <td>選択範囲を維持したまま左右へスライド移動（時間ロック連動）</td>
             </tr>
             <tr>
+              <td><span class="kbd">A</span> / <span class="kbd">Ctrl</span> + <span class="kbd">A</span></td>
+              <td>最初から最後まで全選択</td>
+            </tr>
+            <tr>
               <td><span class="kbd">Esc</span></td>
               <td>選択範囲を解除（開始・終了なしの状態に戻す）</td>
             </tr>

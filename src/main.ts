@@ -30,7 +30,7 @@ class MovieCutterApp {
 
     this.fileInput = document.createElement('input');
     this.fileInput.type = 'file';
-    this.fileInput.accept = 'video/*';
+    this.fileInput.accept = 'video/*,audio/*,image/*';
     this.fileInput.style.display = 'none';
     document.body.appendChild(this.fileInput);
 
@@ -79,7 +79,7 @@ class MovieCutterApp {
     this.fileInput.addEventListener('change', (e) => {
       const target = e.target as HTMLInputElement;
       if (target.files && target.files.length > 0) {
-        this.videoPlayer.loadVideoFile(target.files[0]);
+        this.videoPlayer.loadMediaFile(target.files[0]);
       }
     });
   }

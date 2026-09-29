@@ -21,6 +21,7 @@ export class Controls {
   private lockDurationBtn!: HTMLButtonElement;
   private durationInputField!: HTMLElement;
   private clearRangeBtn!: HTMLButtonElement;
+  private selectAllBtn!: HTMLButtonElement;
   private quick3sBtn!: HTMLButtonElement;
   private quick5sBtn!: HTMLButtonElement;
   private quick15sBtn!: HTMLButtonElement;
@@ -94,6 +95,10 @@ export class Controls {
       <!-- クイック秒数プリセット (AI & SNS) & 範囲解除 -->
       <div class="control-group range-action-group">
         <div class="quick-duration-group" title="ワンクリックで指定秒数を選択">
+          <button id="selectAllBtn" class="btn btn-sm quick-preset-btn select-all-btn" title="最初から最後まで全選択 (Ctrl+A / Alt+A)">
+            ${Icons.maximize}
+            <span>全選択</span>
+          </button>
           <button id="quick3sBtn" class="btn btn-sm quick-preset-btn" title="AI動画推奨 (3秒)">3s</button>
           <button id="quick5sBtn" class="btn btn-sm quick-preset-btn" title="AI動画推奨 (5秒)">5s</button>
           <button id="quick15sBtn" class="btn btn-sm quick-preset-btn" title="Instagram Stories / TikTok (15秒)">15s</button>
@@ -131,6 +136,7 @@ export class Controls {
     this.lockDurationBtn = this.container.querySelector('#lockDurationBtn') as HTMLButtonElement;
     this.durationInputField = this.container.querySelector('#durationInputField') as HTMLElement;
     this.clearRangeBtn = this.container.querySelector('#clearRangeBtn') as HTMLButtonElement;
+    this.selectAllBtn = this.container.querySelector('#selectAllBtn') as HTMLButtonElement;
     this.quick3sBtn = this.container.querySelector('#quick3sBtn') as HTMLButtonElement;
     this.quick5sBtn = this.container.querySelector('#quick5sBtn') as HTMLButtonElement;
     this.quick15sBtn = this.container.querySelector('#quick15sBtn') as HTMLButtonElement;
@@ -260,6 +266,11 @@ export class Controls {
       this.appState.clearRange();
     });
 
+    // 全選択ボタン (最初から最後まで)
+    this.selectAllBtn.addEventListener('click', () => {
+      this.appState.selectAllRange();
+    });
+
     // クイック選択プリセット (3秒 / 5秒 / 15秒 / 60秒)
     this.quick3sBtn.addEventListener('click', () => {
       this.appState.setClipDuration(3.0);
@@ -337,6 +348,9 @@ export class Controls {
       } else if (e.key === 'l' || e.key === 'L') {
         const state = this.appState.getState();
         this.appState.setLoopingRange(!state.isLoopingRange);
+      } else if ((e.ctrlKey && e.key.toLowerCase() === 'a') || (e.altKey && e.key.toLowerCase() === 'a') || e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        this.appState.selectAllRange();
       }
     });
   }
@@ -356,6 +370,7 @@ export class Controls {
     this.durationInput.disabled = !hasVideo;
     this.lockDurationBtn.disabled = !hasVideo;
     this.clearRangeBtn.disabled = !hasRange;
+    this.selectAllBtn.disabled = !hasVideo;
     this.quick3sBtn.disabled = !hasVideo;
     this.quick5sBtn.disabled = !hasVideo;
     this.quick15sBtn.disabled = !hasVideo;

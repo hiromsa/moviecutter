@@ -221,4 +221,77 @@ export class FFmpegEngine {
       throw err;
     }
   }
+
+  /**
+   * 静止画と音声を合成してMP4動画を生成（Twitter/X投稿用静止画動画）
+   * @param imageBlob カバー画像Blob
+   * @param audioFile 入力音声ファイル
+   * @param startTime 開始秒数
+   * @param endTime 終了秒数
+   * @param onProgress 進捗コールバック (0-100)
+   */
+  public async createVideoFromImageAndAudio(
+    imageBlob: Blob,
+    audioFile: File,
+    startTime: number,
+    endTime: number,
+    onProgress?: (progress: number) => void
+  ): Promise<Blob> {
+    if (!this.isLoaded || !this.ffmpeg) {
+      await this.load(onProgress);
+    }
+    if (!this.ffmpeg) throw new Error('FFmpeg is not initialized');
+
+    if (onProgress) {
+      this.ffmpeg.setProgress(({ ratio }) => {
+        onProgress(Math.min(100, Math.max(0, ratio * 100)));
+      });
+    }
+
+    const imgName = `cover_${Date.now()}.png`;
+    const audioExt = audioFile.name.split('.').pop() || 'mp3';
+    const audioName = `audio_${Date.now()}.${audioExt}`;
+    const outputName = `still_video_${Date.now()}.mp4`;
+
+    try {
+      const imgData = await imageBlob.arrayBuffer();
+      const audioData = await audioFile.arrayBuffer();
+      this.ffmpeg.FS('writeFile', imgName, new Uint8Array(imgData));
+      this.ffmpeg.FS('writeFile', audioName, new Uint8Array(audioData));
+
+      const duration = Math.max(0.1, endTime - startTime);
+
+      // 静止画ループ + 音声切り出し + H.264 / AAC + YUV420P (Twitter/X 完全互換)
+      await this.ffmpeg.run(
+        '-loop', '1',
+        '-i', imgName,
+        '-ss', startTime.toFixed(3),
+        '-t', duration.toFixed(3),
+        '-i', audioName,
+        '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
+        '-c:v', 'libx264',
+        '-tune', 'stillimage',
+        '-preset', 'ultrafast',
+        '-c:a', 'aac',
+        '-b:a', '192k',
+        '-pix_fmt', 'yuv420p',
+        '-shortest',
+        outputName
+      );
+
+      const outData = this.ffmpeg.FS('readFile', outputName);
+      const blob = new Blob([outData.buffer], { type: 'video/mp4' });
+
+      try {
+        this.ffmpeg.FS('unlink', imgName);
+        this.ffmpeg.FS('unlink', audioName);
+        this.ffmpeg.FS('unlink', outputName);
+      } catch (e) {}
+
+      return blob;
+    } catch (err) {
+      console.error('Image + Audio video creation failed:', err);
+      throw err;
+    }
+  }
 }

@@ -139,29 +139,44 @@ export class ExportPanel {
         this.cutVideoBtn.disabled = true;
         this.progressBarContainer.classList.add('active');
         this.progressBarFill.style.width = '10%';
-        this.appState.setFFmpegStatus('processing', '動画を高速切り出し中...');
 
         const ffmpeg = FFmpegEngine.getInstance();
-        const blob = await ffmpeg.cutVideo(
-          state.videoFile,
-          state.startTime,
-          state.endTime,
-          (progress) => {
-            this.progressBarFill.style.width = `${Math.max(10, progress)}%`;
-          }
-        );
+        let blob: Blob;
+
+        if (state.mediaMode === 'audio-still' && state.imageBlob && state.audioFile) {
+          this.appState.setFFmpegStatus('processing', '静止画＋音声からMP4動画を生成中 (Twitter/X対応)...');
+          blob = await ffmpeg.createVideoFromImageAndAudio(
+            state.imageBlob,
+            state.audioFile,
+            state.startTime,
+            state.endTime,
+            (progress) => {
+              this.progressBarFill.style.width = `${Math.max(10, progress)}%`;
+            }
+          );
+        } else {
+          this.appState.setFFmpegStatus('processing', '動画を高速切り出し中...');
+          blob = await ffmpeg.cutVideo(
+            state.videoFile,
+            state.startTime,
+            state.endTime,
+            (progress) => {
+              this.progressBarFill.style.width = `${Math.max(10, progress)}%`;
+            }
+          );
+        }
 
         this.progressBarFill.style.width = '100%';
 
-        const baseName = (state.videoFile.name || 'video').replace(/\.[^/.]+$/, '');
+        const baseName = (state.videoFile.name || 'media').replace(/\.[^/.]+$/, '');
         const filename = `cut_${baseName}_${state.startTime.toFixed(2)}s-${state.endTime.toFixed(2)}s.mp4`;
 
         await this.saveFile(blob, filename, 'video/mp4', 'mp4');
         this.appState.setFFmpegStatus('ready', '切り取りと保存が完了しました！');
       } catch (err: any) {
         console.error(err);
-        this.appState.setFFmpegStatus('error', '切り取り処理でエラーが発生しました: ' + err.message);
-        alert('切り取り処理中にエラーが発生しました。コンソールログを確認してください。');
+        this.appState.setFFmpegStatus('error', '処理でエラーが発生しました: ' + err.message);
+        alert('処理中にエラーが発生しました。コンソールログを確認してください。');
       } finally {
         this.cutVideoBtn.disabled = false;
         setTimeout(() => {
@@ -173,15 +188,21 @@ export class ExportPanel {
 
     // 現在フレーム保存 (ファイル保存)
     this.captureFrameBtn.addEventListener('click', async () => {
-      const video = this.getVideoElement();
       const state = this.appState.getState();
-      if (!state.videoFile || !video) return;
+      if (!state.videoFile) return;
 
-      const { blob } = VideoEngine.captureFrame(video);
-      const b = await blob;
+      let b: Blob | null = null;
+      if (state.mediaMode === 'audio-still' && state.imageBlob) {
+        b = state.imageBlob;
+      } else {
+        const video = this.getVideoElement();
+        if (!video) return;
+        const { blob } = VideoEngine.captureFrame(video);
+        b = await blob;
+      }
       if (!b) return;
 
-      const baseName = (state.videoFile.name || 'video').replace(/\.[^/.]+$/, '');
+      const baseName = (state.videoFile.name || 'media').replace(/\.[^/.]+$/, '');
       const filename = `frame_${baseName}_${state.currentTime.toFixed(2)}s.png`;
 
       await this.saveFile(b, filename, 'image/png', 'png');
@@ -189,12 +210,18 @@ export class ExportPanel {
 
     // 現在フレームをクリップボードにコピー
     this.copyFrameBtn.addEventListener('click', async () => {
-      const video = this.getVideoElement();
       const state = this.appState.getState();
-      if (!state.videoFile || !video) return;
+      if (!state.videoFile) return;
 
-      const { blob } = VideoEngine.captureFrame(video);
-      const b = await blob;
+      let b: Blob | null = null;
+      if (state.mediaMode === 'audio-still' && state.imageBlob) {
+        b = state.imageBlob;
+      } else {
+        const video = this.getVideoElement();
+        if (!video) return;
+        const { blob } = VideoEngine.captureFrame(video);
+        b = await blob;
+      }
       if (!b) return;
 
       await this.copyImageToClipboard(b, '現在のフレーム');
@@ -209,10 +236,16 @@ export class ExportPanel {
       this.appState.setStatusMessage('ラストフレームを抽出中...');
 
       try {
-        const targetTime = Math.max(0, state.endTime - 0.033);
-        const blob = await VideoEngine.captureFrameAtTime(state.videoUrl, targetTime);
+        let blob: Blob | null = null;
+        if (state.mediaMode === 'audio-still' && state.imageBlob) {
+          blob = state.imageBlob;
+        } else {
+          const targetTime = Math.max(0, state.endTime - 0.033);
+          blob = await VideoEngine.captureFrameAtTime(state.videoUrl, targetTime);
+        }
+
         if (blob) {
-          const baseName = (state.videoFile.name || 'video').replace(/\.[^/.]+$/, '');
+          const baseName = (state.videoFile.name || 'media').replace(/\.[^/.]+$/, '');
           const filename = `last_frame_${baseName}_${state.endTime.toFixed(2)}s.png`;
 
           await this.saveFile(blob, filename, 'image/png', 'png');
@@ -236,8 +269,14 @@ export class ExportPanel {
       this.appState.setStatusMessage('ラストフレームをコピー中...');
 
       try {
-        const targetTime = Math.max(0, state.endTime - 0.033);
-        const blob = await VideoEngine.captureFrameAtTime(state.videoUrl, targetTime);
+        let blob: Blob | null = null;
+        if (state.mediaMode === 'audio-still' && state.imageBlob) {
+          blob = state.imageBlob;
+        } else {
+          const targetTime = Math.max(0, state.endTime - 0.033);
+          blob = await VideoEngine.captureFrameAtTime(state.videoUrl, targetTime);
+        }
+
         if (blob) {
           await this.copyImageToClipboard(blob, 'ラストフレーム');
         } else {

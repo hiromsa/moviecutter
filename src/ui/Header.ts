@@ -34,9 +34,9 @@ export class Header {
       </div>
 
       <div class="header-actions">
-        <button id="headerOpenBtn" class="btn btn-primary" title="動画ファイルを開く">
+        <button id="headerOpenBtn" class="btn btn-primary" title="動画・音声・画像ファイルを開く">
           ${Icons.folder}
-          <span>動画を開く</span>
+          <span>ファイルを開く</span>
         </button>
         <button id="headerHelpBtn" class="btn" title="使い方・キーボードショートカット">
           ${Icons.help}

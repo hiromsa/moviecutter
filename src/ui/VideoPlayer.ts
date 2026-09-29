@@ -7,10 +7,14 @@ export class VideoPlayer {
   private container: HTMLElement;
   private mainViewEl: HTMLElement;
   private videoEl: HTMLVideoElement;
+  private stillImageEl: HTMLImageElement;
   private dropzoneEl: HTMLElement;
   private replaceOverlayEl: HTMLElement;
   private hudTimeEl: HTMLElement;
   private hudInfoEl: HTMLElement;
+  private changeImageBtn: HTMLButtonElement;
+  private imageFileInput: HTMLInputElement;
+  private pendingImage: { file: File | null; blob: Blob; dataUrl: string; width: number; height: number } | null = null;
 
   private rangeSidebarEl: HTMLElement;
   private inPreviewCard: HTMLElement;
@@ -44,10 +48,16 @@ export class VideoPlayer {
     this.videoEl.className = 'player-video';
     this.videoEl.playsInline = true;
 
+    // 静止画像（音声モード用カバーアート）
+    this.stillImageEl = document.createElement('img');
+    this.stillImageEl.className = 'player-still-image';
+    this.stillImageEl.alt = 'カバー画像';
+    this.stillImageEl.style.display = 'none';
+
     this.dropzoneEl = document.createElement('div');
     this.dropzoneEl.className = 'dropzone-overlay';
 
-    // 動画読み込み後のドラッグオーバー用オーバーレイ（点線＆ドロップガイド）
+    // 動画・音声・画像読み込み後のドラッグオーバー用オーバーレイ（点線＆ドロップガイド）
     this.replaceOverlayEl = document.createElement('div');
     this.replaceOverlayEl.className = 'replace-drop-overlay';
 
@@ -58,6 +68,18 @@ export class VideoPlayer {
     this.hudInfoEl = document.createElement('div');
     this.hudInfoEl.className = 'hud-badge info';
     this.hudInfoEl.textContent = '未選択';
+
+    this.changeImageBtn = document.createElement('button');
+    this.changeImageBtn.className = 'hud-badge action-btn btn-change-image';
+    this.changeImageBtn.innerHTML = `${Icons.camera}<span>画像変更</span>`;
+    this.changeImageBtn.title = '静止画（カバー画像）を変更する';
+    this.changeImageBtn.style.display = 'none';
+
+    this.imageFileInput = document.createElement('input');
+    this.imageFileInput.type = 'file';
+    this.imageFileInput.accept = 'image/*';
+    this.imageFileInput.style.display = 'none';
+    document.body.appendChild(this.imageFileInput);
 
     // 右側: IN/OUT プレビューサイドバー
     this.rangeSidebarEl = document.createElement('aside');
@@ -119,8 +141,8 @@ export class VideoPlayer {
       <div class="dropzone-icon-box">
         ${Icons.uploadCloud}
       </div>
-      <div class="dropzone-text-main">動画ファイルをここにドラッグ＆ドロップ</div>
-      <div class="dropzone-text-sub">クリックしてファイルを選択 (MP4, WebM, MOV, AVI...)</div>
+      <div class="dropzone-text-main">動画・音声・画像をドラッグ＆ドロップ</div>
+      <div class="dropzone-text-sub">クリックしてファイルを選択 (MP4, WebM, MP3, WAV, PNG, JPG...)</div>
     `;
 
     this.replaceOverlayEl.innerHTML = `
@@ -128,17 +150,25 @@ export class VideoPlayer {
         <div class="dropzone-icon-box">
           ${Icons.uploadCloud}
         </div>
-        <div class="dropzone-text-main">新しい動画をドロップして差し替え</div>
-        <div class="dropzone-text-sub">クリックまたはドラッグ＆ドロップ (MP4, WebM, MOV, AVI...)</div>
+        <div class="dropzone-text-main">新しい動画・音声・画像をドロップして読み込み</div>
+        <div class="dropzone-text-sub">クリックまたはドラッグ＆ドロップ (MP4, MP3, WAV, PNG, JPG...)</div>
       </div>
     `;
 
     const hudOverlay = document.createElement('div');
     hudOverlay.className = 'player-hud-overlay';
     hudOverlay.appendChild(this.hudTimeEl);
-    hudOverlay.appendChild(this.hudInfoEl);
+
+    const hudRight = document.createElement('div');
+    hudRight.style.display = 'flex';
+    hudRight.style.alignItems = 'center';
+    hudRight.style.gap = '0.5rem';
+    hudRight.appendChild(this.changeImageBtn);
+    hudRight.appendChild(this.hudInfoEl);
+    hudOverlay.appendChild(hudRight);
 
     this.mainViewEl.appendChild(this.videoEl);
+    this.mainViewEl.appendChild(this.stillImageEl);
     this.mainViewEl.appendChild(this.dropzoneEl);
     this.mainViewEl.appendChild(this.replaceOverlayEl);
     this.mainViewEl.appendChild(hudOverlay);
@@ -158,7 +188,26 @@ export class VideoPlayer {
     this.dropzoneEl.addEventListener('click', () => this.onSelectFile());
     this.replaceOverlayEl.addEventListener('click', () => this.onSelectFile());
 
-    // ドラッグ＆ドロップハンドリング (動画未選択時・読み込み後両方で点線とオーバーレイを確実に表示)
+    // 静止画カバークリックで再生/一時停止
+    this.stillImageEl.addEventListener('click', () => {
+      this.appState.togglePlay();
+    });
+
+    // カバー画像変更ボタンクリック
+    this.changeImageBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.imageFileInput.value = '';
+      this.imageFileInput.click();
+    });
+
+    this.imageFileInput.addEventListener('change', (e) => {
+      const target = e.target as HTMLInputElement;
+      if (target.files && target.files.length > 0) {
+        this.loadImageFile(target.files[0]);
+      }
+    });
+
+    // ドラッグ＆ドロップハンドリング (動画・音声・画像すべてを柔軟に受入)
     let dragCounter = 0;
 
     window.addEventListener('dragenter', (e) => {
@@ -197,12 +246,7 @@ export class VideoPlayer {
       this.replaceOverlayEl.classList.remove('active');
       this.dropzoneEl.classList.remove('drag-over');
       if (e.dataTransfer && e.dataTransfer.files.length > 0) {
-        const file = e.dataTransfer.files[0];
-        if (file.type.startsWith('video/')) {
-          this.loadVideoFile(file);
-        } else {
-          alert('動画ファイルを選択してください。');
-        }
+        this.loadMediaFile(e.dataTransfer.files[0]);
       }
     });
 
@@ -252,6 +296,22 @@ export class VideoPlayer {
     });
   }
 
+  public async loadMediaFile(file: File): Promise<void> {
+    const isVideo = file.type.startsWith('video/');
+    const isAudio = file.type.startsWith('audio/') || /\.(mp3|wav|m4a|aac|flac|ogg)$/i.test(file.name);
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name);
+
+    if (isVideo) {
+      await this.loadVideoFile(file);
+    } else if (isAudio) {
+      await this.loadAudioFile(file);
+    } else if (isImage) {
+      await this.loadImageFile(file);
+    } else {
+      alert('動画、音声（MP3/WAV等）、または画像（PNG/JPG等）を選択してください。');
+    }
+  }
+
   public async loadVideoFile(file: File): Promise<void> {
     try {
       this.appState.setStatusMessage('動画を読み込み中...');
@@ -285,14 +345,127 @@ export class VideoPlayer {
     }
   }
 
+  public async loadAudioFile(file: File): Promise<void> {
+    try {
+      this.appState.setStatusMessage('音声を読み込み中...');
+      const duration = await AudioEngine.getAudioDuration(file);
+      const audioUrl = URL.createObjectURL(file);
+
+      // 画像の選定: pendingImage -> 既存のimageBlob -> 自動生成アートワーク
+      let imageBlob: Blob;
+      let imageUrl: string;
+      let imageFile: File | null = null;
+      let width = 1280;
+      let height = 720;
+
+      if (this.pendingImage) {
+        imageBlob = this.pendingImage.blob;
+        imageUrl = this.pendingImage.dataUrl;
+        imageFile = this.pendingImage.file;
+        width = this.pendingImage.width;
+        height = this.pendingImage.height;
+        this.pendingImage = null;
+      } else {
+        const state = this.appState.getState();
+        if (state.imageBlob && state.imageUrl) {
+          imageBlob = state.imageBlob;
+          imageUrl = state.imageUrl;
+          imageFile = state.imageFile;
+          width = state.videoWidth || 1280;
+          height = state.videoHeight || 720;
+        } else {
+          // 美麗なスタジオアートワークをCanvasで自動生成
+          const artwork = await VideoEngine.createDefaultArtwork(
+            file.name,
+            VideoEngine.formatTime(duration),
+            1280,
+            720
+          );
+          imageBlob = artwork.blob;
+          imageUrl = artwork.dataUrl;
+        }
+      }
+
+      this.appState.setAudioWithStill(file, audioUrl, duration, imageBlob, imageUrl, imageFile, width, height);
+
+      // 静止画像サムネイルをタイムラインに展開
+      const staticThumbs = VideoEngine.generateStaticThumbnails(imageUrl, duration, 16);
+      this.appState.setThumbnails(staticThumbs);
+
+      // 音声波形抽出
+      AudioEngine.extractPeaks(file)
+        .then((peaks) => {
+          this.appState.setAudioPeaks(peaks);
+        })
+        .catch((err) => {
+          console.warn('波形抽出エラー:', err);
+          this.appState.setLoadingWaveform(false);
+        });
+    } catch (err: any) {
+      console.error(err);
+      this.appState.setLoadingThumbnails(false);
+      this.appState.setLoadingWaveform(false);
+      alert('音声ファイルの読み込みに失敗しました: ' + err.message);
+    }
+  }
+
+  public async loadImageFile(file: File): Promise<void> {
+    try {
+      this.appState.setStatusMessage('画像を読み込み中...');
+      const { blob, dataUrl, width, height } = await VideoEngine.loadImage(file);
+      const state = this.appState.getState();
+
+      if (state.audioFile) {
+        // すでに音声がロードされている場合はカバー画像を即時差し替え
+        this.appState.updateStillImage(blob, dataUrl, file, width, height);
+        const staticThumbs = VideoEngine.generateStaticThumbnails(dataUrl, state.duration, 16);
+        this.appState.setThumbnails(staticThumbs);
+        this.appState.setStatusMessage(`カバー画像を「${file.name}」に変更しました`);
+      } else {
+        // 音声がまだない場合は画像を保留し、音声を待つ
+        this.pendingImage = { file, blob, dataUrl, width, height };
+        this.dropzoneEl.innerHTML = `
+          <div class="dropzone-icon-box">
+            ${Icons.film}
+          </div>
+          <div class="dropzone-text-main">カバー画像「${file.name}」をセットしました！</div>
+          <div class="dropzone-text-sub">裏で流す音声ファイル（MP3, WAV, M4A等）をここにドロップしてください</div>
+        `;
+        this.appState.setStatusMessage('画像をセットしました。続けて音声ファイルをドロップしてください。');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('画像ファイルの読み込みに失敗しました: ' + err.message);
+    }
+  }
+
   private onStateChange(state: AppStateData, changedKey?: keyof AppStateData): void {
-    if (changedKey === 'videoFile' || !changedKey) {
+    if (changedKey === 'videoFile' || changedKey === 'mediaMode' || changedKey === 'imageUrl' || !changedKey) {
       if (state.videoUrl) {
         this.dropzoneEl.style.display = 'none';
-        this.videoEl.src = state.videoUrl;
-        this.hudInfoEl.textContent = `${state.videoWidth}x${state.videoHeight} (${VideoEngine.formatFileSize(state.videoFile?.size || 0)})`;
+
+        if (state.mediaMode === 'audio-still') {
+          // 静止画＋音声モード
+          this.stillImageEl.style.display = 'block';
+          this.stillImageEl.src = state.imageUrl || '';
+          this.videoEl.style.display = 'none';
+          this.changeImageBtn.style.display = 'inline-flex';
+          this.hudInfoEl.textContent = `🎵 音声+静止画 (${state.videoWidth}x${state.videoHeight})`;
+        } else {
+          // 通常動画モード
+          this.stillImageEl.style.display = 'none';
+          this.videoEl.style.display = 'block';
+          this.changeImageBtn.style.display = 'none';
+          this.hudInfoEl.textContent = `${state.videoWidth}x${state.videoHeight} (${VideoEngine.formatFileSize(state.videoFile?.size || 0)})`;
+        }
+
+        if (this.videoEl.src !== state.videoUrl) {
+          this.videoEl.src = state.videoUrl;
+        }
       } else {
         this.dropzoneEl.style.display = 'flex';
+        this.stillImageEl.style.display = 'none';
+        this.changeImageBtn.style.display = 'none';
         this.hudInfoEl.textContent = '未選択';
       }
     }
@@ -368,6 +541,17 @@ export class VideoPlayer {
     // 時間テキスト更新
     this.inPreviewTimeEl.textContent = VideoEngine.formatTime(state.startTime);
     this.outPreviewTimeEl.textContent = VideoEngine.formatTime(state.endTime);
+
+    // 静止画＋音声モードの場合は同一カバー画像を即座にセット
+    if (state.mediaMode === 'audio-still' && state.imageUrl) {
+      this.inPreviewImgEl.src = state.imageUrl;
+      this.inPreviewImgEl.style.display = 'block';
+      this.inPreviewEmptyEl.style.display = 'none';
+      this.outPreviewImgEl.src = state.imageUrl;
+      this.outPreviewImgEl.style.display = 'block';
+      this.outPreviewEmptyEl.style.display = 'none';
+      return;
+    }
 
     // IN点フレーム更新
     if (Math.abs(this.lastCapturedInTime - state.startTime) > 0.03) {
