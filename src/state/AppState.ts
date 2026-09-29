@@ -33,7 +33,9 @@ export interface AppStateData {
   ffmpegProgress: number;
   statusMessage: string;
   thumbnails: ThumbnailItem[];
+  isLoadingThumbnails: boolean;
   audioPeaks: number[];
+  isLoadingWaveform: boolean;
 }
 
 export type StateChangeListener = (state: AppStateData, changedKey?: keyof AppStateData) => void;
@@ -64,7 +66,9 @@ export class AppState {
     ffmpegProgress: 0,
     statusMessage: '動画ファイルを選択またはドラッグ＆ドロップしてください',
     thumbnails: [],
+    isLoadingThumbnails: false,
     audioPeaks: [],
+    isLoadingWaveform: false,
   };
 
   private listeners: Set<StateChangeListener> = new Set();
@@ -113,10 +117,14 @@ export class AppState {
     this.state.videoHeight = height;
     this.state.isPlaying = false;
     this.state.thumbnails = [];
+    this.state.isLoadingThumbnails = true;
     this.state.audioPeaks = [];
+    this.state.isLoadingWaveform = true;
     this.state.statusMessage = `「${file.name}」を読み込みました (${duration.toFixed(2)}s)`;
     this.notify('videoFile');
     this.notify('hasRange');
+    this.notify('isLoadingThumbnails');
+    this.notify('isLoadingWaveform');
     this.notify('audioPeaks');
   }
 
@@ -324,7 +332,14 @@ export class AppState {
 
   public setThumbnails(thumbnails: ThumbnailItem[]): void {
     this.state.thumbnails = thumbnails;
+    this.state.isLoadingThumbnails = false;
     this.notify('thumbnails');
+    this.notify('isLoadingThumbnails');
+  }
+
+  public setLoadingThumbnails(loading: boolean): void {
+    this.state.isLoadingThumbnails = loading;
+    this.notify('isLoadingThumbnails');
   }
 
   public setStatusMessage(msg: string): void {
@@ -334,6 +349,13 @@ export class AppState {
 
   public setAudioPeaks(peaks: number[]): void {
     this.state.audioPeaks = peaks;
+    this.state.isLoadingWaveform = false;
     this.notify('audioPeaks');
+    this.notify('isLoadingWaveform');
+  }
+
+  public setLoadingWaveform(loading: boolean): void {
+    this.state.isLoadingWaveform = loading;
+    this.notify('isLoadingWaveform');
   }
 }

@@ -134,16 +134,28 @@ export class VideoPlayer {
       this.appState.setVideo(file, url, duration, width, height);
 
       // サムネイル生成をバックグラウンドで開始
-      VideoEngine.generateThumbnails(url, duration, 14).then((thumbnails) => {
-        this.appState.setThumbnails(thumbnails);
-      });
+      VideoEngine.generateThumbnails(url, duration, 14)
+        .then((thumbnails) => {
+          this.appState.setThumbnails(thumbnails);
+        })
+        .catch((err) => {
+          console.warn('サムネイル生成に失敗しました:', err);
+          this.appState.setLoadingThumbnails(false);
+        });
 
       // 音声波形抽出をバックグラウンドで開始
-      AudioEngine.extractPeaks(file).then((peaks) => {
-        this.appState.setAudioPeaks(peaks);
-      });
+      AudioEngine.extractPeaks(file)
+        .then((peaks) => {
+          this.appState.setAudioPeaks(peaks);
+        })
+        .catch((err) => {
+          console.warn('音声波形抽出に失敗しました:', err);
+          this.appState.setLoadingWaveform(false);
+        });
     } catch (err: any) {
       console.error(err);
+      this.appState.setLoadingThumbnails(false);
+      this.appState.setLoadingWaveform(false);
       alert('動画の読み込みに失敗しました: ' + err.message);
     }
   }

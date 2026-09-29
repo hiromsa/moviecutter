@@ -564,6 +564,108 @@ body {
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
+/* タイムラインの準備中（ローディング）オーバーレイ */
+.timeline-loading-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  pointer-events: none;
+  user-select: none;
+}
+
+.thumbnail-loading {
+  top: 0;
+  height: 54px;
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.92) 0%,
+    rgba(30, 41, 59, 0.82) 25%,
+    rgba(51, 65, 85, 0.9) 50%,
+    rgba(30, 41, 59, 0.82) 75%,
+    rgba(15, 23, 42, 0.92) 100%
+  );
+  background-size: 200% 100%;
+  animation: timelineShimmer 2.2s infinite linear;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.waveform-loading {
+  top: 54px;
+  height: 42px;
+  background: rgba(4, 7, 14, 0.94);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.timeline-loading-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: rgba(8, 14, 26, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.25rem 0.8rem;
+  border-radius: 9999px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.timeline-loading-inner .loading-label {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+/* 映像用スピナー */
+.loading-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(56, 189, 248, 0.25);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+/* 音声用イコライザーバーアニメーション */
+.equalizer-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 11px;
+}
+
+.eq-bar {
+  width: 2.5px;
+  background: #06b6d4;
+  border-radius: 1px;
+  animation: eqPulse 1s infinite ease-in-out;
+}
+
+.eq-bar:nth-child(1) { height: 4px; animation-delay: 0.1s; }
+.eq-bar:nth-child(2) { height: 9px; animation-delay: 0.35s; }
+.eq-bar:nth-child(3) { height: 6px; animation-delay: 0.2s; }
+.eq-bar:nth-child(4) { height: 11px; animation-delay: 0.5s; }
+
+@keyframes timelineShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes eqPulse {
+  0%, 100% {
+    height: 3px;
+    opacity: 0.45;
+  }
+  50% {
+    height: 11px;
+    opacity: 1;
+    background: #10b981;
+  }
+}
+
 /* 選択範囲 (Range Selection) - ドラッグで範囲全体をスライド可能 */
 .timeline-range-highlight {
   position: absolute;

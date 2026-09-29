@@ -10,7 +10,9 @@ export class Timeline {
   private rulerEl: HTMLElement;
   private trackEl: HTMLElement;
   private thumbnailStripEl: HTMLElement;
+  private thumbnailLoadingEl: HTMLElement;
   private waveformCanvasEl: HTMLCanvasElement;
+  private waveformLoadingEl: HTMLElement;
   private rangeHighlightEl: HTMLElement;
   private inHandleEl: HTMLElement;
   private outHandleEl: HTMLElement;
@@ -58,8 +60,33 @@ export class Timeline {
     this.thumbnailStripEl = document.createElement('div');
     this.thumbnailStripEl.className = 'thumbnail-strip';
 
+    // 映像プレビュー準備中オーバーレイ
+    this.thumbnailLoadingEl = document.createElement('div');
+    this.thumbnailLoadingEl.className = 'timeline-loading-overlay thumbnail-loading';
+    this.thumbnailLoadingEl.innerHTML = `
+      <div class="timeline-loading-inner">
+        <span class="loading-spinner"></span>
+        <span class="loading-label">映像プレビューを準備中...</span>
+      </div>
+    `;
+
     this.waveformCanvasEl = document.createElement('canvas');
     this.waveformCanvasEl.className = 'timeline-waveform-canvas';
+
+    // 音声波形解析中オーバーレイ
+    this.waveformLoadingEl = document.createElement('div');
+    this.waveformLoadingEl.className = 'timeline-loading-overlay waveform-loading';
+    this.waveformLoadingEl.innerHTML = `
+      <div class="timeline-loading-inner">
+        <div class="equalizer-bars">
+          <span class="eq-bar"></span>
+          <span class="eq-bar"></span>
+          <span class="eq-bar"></span>
+          <span class="eq-bar"></span>
+        </div>
+        <span class="loading-label">音声波形を解析中...</span>
+      </div>
+    `;
 
     this.rangeHighlightEl = document.createElement('div');
     this.rangeHighlightEl.className = 'timeline-range-highlight';
@@ -120,7 +147,9 @@ export class Timeline {
 
     // トラック構築
     this.trackEl.appendChild(this.thumbnailStripEl);
+    this.trackEl.appendChild(this.thumbnailLoadingEl);
     this.trackEl.appendChild(this.waveformCanvasEl);
+    this.trackEl.appendChild(this.waveformLoadingEl);
     this.trackEl.appendChild(this.rangeHighlightEl);
     this.trackEl.appendChild(this.inHandleEl);
     this.trackEl.appendChild(this.outHandleEl);
@@ -530,6 +559,17 @@ export class Timeline {
         img.draggable = false;
         this.thumbnailStripEl.appendChild(img);
       }
+    }
+
+    // 映像・音声プレビュー準備中（ローディング）の制御
+    if (changedKey === 'isLoadingThumbnails' || changedKey === 'thumbnails' || changedKey === 'videoFile' || !changedKey) {
+      const showThumbLoading = hasVideo && (state.isLoadingThumbnails || state.thumbnails.length === 0);
+      this.thumbnailLoadingEl.style.display = showThumbLoading ? 'flex' : 'none';
+    }
+
+    if (changedKey === 'isLoadingWaveform' || changedKey === 'audioPeaks' || changedKey === 'videoFile' || !changedKey) {
+      const showWaveLoading = hasVideo && (state.isLoadingWaveform || state.audioPeaks.length === 0);
+      this.waveformLoadingEl.style.display = showWaveLoading ? 'flex' : 'none';
     }
 
     const playheadPercent = (state.currentTime / duration) * 100;
