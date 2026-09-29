@@ -463,10 +463,21 @@ export class VideoPlayer {
           this.videoEl.src = state.videoUrl;
         }
       } else {
-        this.dropzoneEl.style.display = 'flex';
+        this.videoEl.pause();
+        this.videoEl.removeAttribute('src');
+        this.videoEl.load();
         this.stillImageEl.style.display = 'none';
+        this.stillImageEl.src = '';
         this.changeImageBtn.style.display = 'none';
         this.hudInfoEl.textContent = '未選択';
+        this.dropzoneEl.style.display = 'flex';
+        this.dropzoneEl.innerHTML = `
+          <div class="dropzone-icon-box">
+            ${Icons.uploadCloud}
+          </div>
+          <div class="dropzone-text-main">動画・音声・画像をドラッグ＆ドロップ</div>
+          <div class="dropzone-text-sub">クリックしてファイルを選択 (MP4, WebM, MP3, WAV, PNG, JPG...)</div>
+        `;
       }
     }
 

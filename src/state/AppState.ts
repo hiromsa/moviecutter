@@ -457,4 +457,59 @@ export class AppState {
     this.state.isLoadingWaveform = loading;
     this.notify('isLoadingWaveform');
   }
+
+  /**
+   * 編集内容をクリアしてアプリを初期状態にリセット
+   */
+  public reset(): void {
+    if (this.state.videoUrl) {
+      try {
+        URL.revokeObjectURL(this.state.videoUrl);
+      } catch (e) {
+        console.warn('Revoke videoUrl error:', e);
+      }
+    }
+    if (this.state.imageUrl) {
+      try {
+        URL.revokeObjectURL(this.state.imageUrl);
+      } catch (e) {
+        console.warn('Revoke imageUrl error:', e);
+      }
+    }
+
+    this.state = {
+      mediaMode: 'video',
+      videoFile: null,
+      videoUrl: null,
+      videoName: '',
+      audioFile: null,
+      imageFile: null,
+      imageBlob: null,
+      imageUrl: null,
+      duration: 0,
+      currentTime: 0,
+      startTime: 0,
+      endTime: 0,
+      hasRange: false,
+      isPlaying: false,
+      isLoopingRange: false,
+      playbackRate: 1.0,
+      volume: 1.0,
+      isMuted: false,
+      videoWidth: 0,
+      videoHeight: 0,
+      fps: 30,
+      timelineZoom: 1.0,
+      isDurationLocked: false,
+      ffmpegStatus: this.state.ffmpegStatus === 'ready' ? 'ready' : this.state.ffmpegStatus,
+      ffmpegProgress: 0,
+      statusMessage: '編集内容をクリアしました。動画・音声・画像ファイルを選択してください。',
+      thumbnails: [],
+      isLoadingThumbnails: false,
+      audioPeaks: [],
+      isLoadingWaveform: false,
+    };
+
+    this.notify();
+  }
 }
