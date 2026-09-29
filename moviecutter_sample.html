@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ブラウザ動画カッター</title>
+    <!-- FFmpeg.wasmの読み込み -->
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+        video { width: 100%; background: #000; border-radius: 8px; margin-bottom: 1rem; }
+        .controls { display: flex; gap: 1rem; margin-bottom: 1.5rem; background: #f5f5f5; padding: 1rem; border-radius: 8px; }
+        .time-box { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
+        input[type="number"] { padding: 0.5rem; width: 100px; }
+        button { padding: 0.5rem 1rem; cursor: pointer; border: none; border-radius: 4px; background: #e0e0e0; }
+        button:hover { background: #d0d0d0; }
+        #cutBtn { background: #007bff; color: white; width: 100%; padding: 1rem; font-size: 1.1rem; font-weight: bold; }
+        #cutBtn:hover { background: #0056b3; }
+        #cutBtn:disabled { background: #cccccc; cursor: not-allowed; }
+        #status { margin-top: 1rem; font-weight: bold; color: #333; }
+    </style>
+</head>
+<body>
+
+    <h2>✂️ 軽量動画カッター</h2>
+    <input type="file" id="uploader" accept="video/*" style="margin-bottom: 1rem;">
+    
+    <video id="player" controls></video>
+    
+    <div class="controls">
+        <div class="time-box">
+            <label>開始時間 (秒)</label>
+            <div>
+                <input type="number" id="startTime" step="0.1" value="0">
+                <button onclick="setStartTime()">現在位置</button>
+            </div>
+        </div>
+        <div class="time-box">
+            <label>終了時間 (秒)</label>
+            <div>
+                <input type="number" id="endTime" step="0.1" value="5">
+                <button onclick="setEndTime()">現在位置</button>
+            </div>
+        </div>
+    </div>
+    
+    <button id="cutBtn" disabled>切り取って保存</button>
+    <div id="status">FFmpegエンジンを読み込み中...</div>
+
+    <script>
+        const { createFFmpeg, fetchFile } = FFmpeg;
+        // ログを出力してデバッグしやすくする
+        const ffmpeg = createFFmpeg({ log: true });
+        let isReady = false;
+        let videoFile = null;
+
+        const uploader = document.getElementById('uploader');
+        const player = document.getElementById('player');
+        const startTimeInput = document.getElementById('startTime');
+        const endTimeInput = document.getElementById('endTime');
+        const cutBtn = document.getElementById('cutBtn');
+        const statusText = document.getElementById('status');
+
+        // ① FFmpegの初期化
+        async function init() {
+            try {
+                await ffmpeg.load();
+                isReady = true;
+                statusText.innerText = '準備完了！動画を選択してください。';
+                if (videoFile) cutBtn.disabled = false;
+            } catch (e) {
+                statusText.innerText = 'エラー: FFmpegの読み込みに失敗しました。';
+                console.error(e);
+            }
+        }
+        init();
+
+        // ② 動画の読み込みとプレビュー
+        uploader.addEventListener('change', (e) => {
+            videoFile = e.target.files[0];
+            if (!videoFile) return;
+            
+            const url = URL.createObjectURL(videoFile);
+            player.src = url;
+            if (isReady) cutBtn.disabled = false;
+            statusText.innerText = '動画を読み込みました。範囲を指定して切り取れます。';
+        });
+
+        // UI操作：現在の再生位置を入力欄にセット
+        window.setStartTime = () => { startTimeInput.value = player.currentTime.toFixed(2); };
+        window.setEndTime = () => { endTimeInput.value = player.currentTime.toFixed(2); };
+
+        // ③ 動画の切り取り処理
+        cutBtn.addEventListener('click', async () => {
+            if (!isReady || !videoFile) return;
+            
+            cutBtn.disabled = true;
+            statusText.innerText = '処理中... (ブラウザ内で高速に切り取っています)';
+
+            const ext = videoFile.name.split('.').pop();
+            const inputName = `input.${ext}`;
+            const outputName = `output.mp4`; // 出力は互換性の高いMP4に固定
+
+            try {
+                // ファイルを仮想メモリに書き込む
+                ffmpeg.FS('writeFile', inputName, await fetchFile(videoFile));
+
+                // FFmpegコマンドの実行 (-ss と -to を秒数で指定、再エンコードなしの -c copy)
+                await ffmpeg.run(
+                    '-i', inputName, 
+                    '-ss', startTimeInput.value, 
+                    '-to', endTimeInput.value, 
+                    '-c', 'copy', 
+                    outputName
+                );
+
+                // 処理結果の読み出し
+                const data = ffmpeg.FS('readFile', outputName);
+                
+                // ダウンロード処理
+                const url = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `cut_${videoFile.name}`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+
+                statusText.innerText = '切り取りと保存が完了しました！';
+            } catch (e) {
+                statusText.innerText = 'エラーが発生しました。コンソールを確認してください。';
+                console.error(e);
+            } finally {
+                cutBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
