@@ -267,7 +267,7 @@ body {
   flex: 1;
 }
 
-/* プレイヤー領域 */
+/* プレイヤー領域（左: メインプレビュー、右: IN/OUT プレビューサイドバー） */
 .player-container {
   position: relative;
   background: #020408;
@@ -276,17 +276,155 @@ body {
   overflow: hidden;
   box-shadow: var(--shadow-lg);
   display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  padding: 0.65rem;
+  min-height: 380px;
+  max-height: 500px;
+}
+
+/* メイン動画プレイヤービュー */
+.player-main-view {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  background: #050811;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
-  max-height: 520px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .player-video {
-  max-width: 100%;
-  max-height: 520px;
+  width: 100%;
+  height: 100%;
+  max-height: 480px;
   object-fit: contain;
   display: block;
+}
+
+/* 右側: IN / OUT 範囲プレビューサイドバー */
+.range-preview-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+/* IN / OUT プレビューカード */
+.range-preview-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgba(13, 20, 36, 0.65);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 0.55rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.range-preview-card.in-card:hover {
+  border-color: rgba(16, 185, 129, 0.55);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.08);
+  transform: translateY(-1px);
+}
+
+.range-preview-card.out-card:hover {
+  border-color: rgba(245, 158, 11, 0.55);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.2);
+  background: rgba(245, 158, 11, 0.08);
+  transform: translateY(-1px);
+}
+
+.range-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  flex-shrink: 0;
+}
+
+.range-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-xs);
+  letter-spacing: 0.03em;
+}
+
+.badge-in {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #34d399;
+}
+
+.badge-out {
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fbbf24;
+}
+
+.range-time-badge {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+/* サムネイル表示領域 */
+.range-thumb-container {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: #03050a;
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.range-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.range-preview-card:hover .range-thumb-img {
+  transform: scale(1.03);
+}
+
+.range-thumb-empty {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .player-container {
+    flex-direction: column;
+    max-height: none;
+  }
+  .range-preview-sidebar {
+    width: 100%;
+    flex-direction: row;
+    height: 140px;
+  }
 }
 
 /* ドラッグ＆ドロップゾーン（動画未選択時） */
@@ -960,31 +1098,49 @@ body {
   padding: 0.3rem;
 }
 
-/* 範囲解除ボタン（縦書き防止＆スッキリ横並び） */
+/* 範囲解除ボタン（スタイリッシュなルビーレッド調アイコンボタン） */
+.btn-clear-range,
 .clear-range-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.45rem;
   white-space: nowrap;
   flex-shrink: 0;
-  padding: 0.42rem 0.75rem;
-  background: rgba(239, 68, 68, 0.06);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #f87171;
+  padding: 0.42rem 0.85rem;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
   border-radius: var(--radius-sm);
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
+.btn-clear-range:hover:not(:disabled),
 .clear-range-btn:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.22);
   border-color: #ef4444;
   color: #ffffff;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
+  transform: translateY(-1px);
 }
 
+.btn-clear-range:active:not(:disabled),
+.clear-range-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-clear-range svg,
+.clear-range-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  flex-shrink: 0;
+}
+
+.btn-clear-range span,
 .clear-range-btn span {
   white-space: nowrap;
   display: inline-block;

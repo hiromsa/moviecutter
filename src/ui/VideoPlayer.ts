@@ -5,13 +5,28 @@ import { Icons } from './icons';
 
 export class VideoPlayer {
   private container: HTMLElement;
+  private mainViewEl: HTMLElement;
   private videoEl: HTMLVideoElement;
   private dropzoneEl: HTMLElement;
   private hudTimeEl: HTMLElement;
   private hudInfoEl: HTMLElement;
+
+  private rangeSidebarEl: HTMLElement;
+  private inPreviewCard: HTMLElement;
+  private outPreviewCard: HTMLElement;
+  private inPreviewTimeEl: HTMLElement;
+  private outPreviewTimeEl: HTMLElement;
+  private inPreviewImgEl: HTMLImageElement;
+  private outPreviewImgEl: HTMLImageElement;
+  private inPreviewEmptyEl: HTMLElement;
+  private outPreviewEmptyEl: HTMLElement;
+
   private appState: AppState;
   private isUserSeeking = false;
   private onSelectFile: () => void;
+  private updateThumbTimeout: any = null;
+  private lastCapturedInTime: number = -1;
+  private lastCapturedOutTime: number = -1;
 
   constructor(options: { onSelectFile: () => void }) {
     this.appState = AppState.getInstance();
@@ -19,6 +34,10 @@ export class VideoPlayer {
 
     this.container = document.createElement('div');
     this.container.className = 'player-container';
+
+    // 左側: メインビュー
+    this.mainViewEl = document.createElement('div');
+    this.mainViewEl.className = 'player-main-view';
 
     this.videoEl = document.createElement('video');
     this.videoEl.className = 'player-video';
@@ -34,6 +53,50 @@ export class VideoPlayer {
     this.hudInfoEl = document.createElement('div');
     this.hudInfoEl.className = 'hud-badge info';
     this.hudInfoEl.textContent = '未選択';
+
+    // 右側: IN/OUT プレビューサイドバー
+    this.rangeSidebarEl = document.createElement('aside');
+    this.rangeSidebarEl.className = 'range-preview-sidebar';
+
+    this.inPreviewCard = document.createElement('div');
+    this.inPreviewCard.className = 'range-preview-card in-card';
+    this.inPreviewCard.title = 'クリックして開始点 (In) へジャンプ';
+    this.inPreviewCard.innerHTML = `
+      <div class="range-card-header">
+        <span class="range-badge badge-in">IN (開始)</span>
+        <span class="range-time-badge" id="inPreviewTime">--:--.--</span>
+      </div>
+      <div class="range-thumb-container">
+        <img id="inPreviewImg" class="range-thumb-img" style="display: none;" alt="開始点プレビュー" />
+        <div id="inPreviewEmpty" class="range-thumb-empty">
+          <span>未設定</span>
+        </div>
+      </div>
+    `;
+
+    this.outPreviewCard = document.createElement('div');
+    this.outPreviewCard.className = 'range-preview-card out-card';
+    this.outPreviewCard.title = 'クリックして終了点 (Out) へジャンプ';
+    this.outPreviewCard.innerHTML = `
+      <div class="range-card-header">
+        <span class="range-badge badge-out">OUT (終了)</span>
+        <span class="range-time-badge" id="outPreviewTime">--:--.--</span>
+      </div>
+      <div class="range-thumb-container">
+        <img id="outPreviewImg" class="range-thumb-img" style="display: none;" alt="終了点プレビュー" />
+        <div id="outPreviewEmpty" class="range-thumb-empty">
+          <span>未設定</span>
+        </div>
+      </div>
+    `;
+
+    this.inPreviewTimeEl = this.inPreviewCard.querySelector('#inPreviewTime') as HTMLElement;
+    this.inPreviewImgEl = this.inPreviewCard.querySelector('#inPreviewImg') as HTMLImageElement;
+    this.inPreviewEmptyEl = this.inPreviewCard.querySelector('#inPreviewEmpty') as HTMLElement;
+
+    this.outPreviewTimeEl = this.outPreviewCard.querySelector('#outPreviewTime') as HTMLElement;
+    this.outPreviewImgEl = this.outPreviewCard.querySelector('#outPreviewImg') as HTMLImageElement;
+    this.outPreviewEmptyEl = this.outPreviewCard.querySelector('#outPreviewEmpty') as HTMLElement;
 
     this.init();
   }
@@ -60,9 +123,15 @@ export class VideoPlayer {
     hudOverlay.appendChild(this.hudTimeEl);
     hudOverlay.appendChild(this.hudInfoEl);
 
-    this.container.appendChild(this.videoEl);
-    this.container.appendChild(this.dropzoneEl);
-    this.container.appendChild(hudOverlay);
+    this.mainViewEl.appendChild(this.videoEl);
+    this.mainViewEl.appendChild(this.dropzoneEl);
+    this.mainViewEl.appendChild(hudOverlay);
+
+    this.rangeSidebarEl.appendChild(this.inPreviewCard);
+    this.rangeSidebarEl.appendChild(this.outPreviewCard);
+
+    this.container.appendChild(this.mainViewEl);
+    this.container.appendChild(this.rangeSidebarEl);
 
     this.setupEvents();
     this.appState.subscribe((state, key) => this.onStateChange(state, key));
@@ -123,6 +192,21 @@ export class VideoPlayer {
         this.videoEl.play();
       } else {
         this.appState.setPlaying(false);
+      }
+    });
+
+    // IN / OUT プレビューカードのクリックでジャンプ
+    this.inPreviewCard.addEventListener('click', () => {
+      const state = this.appState.getState();
+      if (state.hasRange) {
+        this.appState.jumpToStart();
+      }
+    });
+
+    this.outPreviewCard.addEventListener('click', () => {
+      const state = this.appState.getState();
+      if (state.hasRange) {
+        this.appState.jumpToEnd();
       }
     });
   }
@@ -198,6 +282,72 @@ export class VideoPlayer {
     if (changedKey === 'volume' || !changedKey) {
       this.videoEl.volume = state.isMuted ? 0 : state.volume;
       this.videoEl.muted = state.isMuted;
+    }
+
+    // 開始点・終了点プレビュー画像の更新トリガー
+    if (
+      changedKey === 'startTime' ||
+      changedKey === 'endTime' ||
+      changedKey === 'hasRange' ||
+      changedKey === 'videoFile' ||
+      !changedKey
+    ) {
+      this.scheduleRangeThumbnailsUpdate();
+    }
+  }
+
+  /**
+   * IN/OUTフレームプレビューの更新をデバウンス実行
+   */
+  private scheduleRangeThumbnailsUpdate(): void {
+    clearTimeout(this.updateThumbTimeout);
+    this.updateThumbTimeout = setTimeout(() => {
+      this.updateRangeThumbnails();
+    }, 100);
+  }
+
+  /**
+   * IN/OUTフレームのプレビュー画像を描画
+   */
+  private async updateRangeThumbnails(): Promise<void> {
+    const state = this.appState.getState();
+
+    if (!state.videoUrl || !state.hasRange) {
+      this.inPreviewTimeEl.textContent = '--:--.--';
+      this.outPreviewTimeEl.textContent = '--:--.--';
+      this.inPreviewImgEl.style.display = 'none';
+      this.inPreviewEmptyEl.style.display = 'flex';
+      this.outPreviewImgEl.style.display = 'none';
+      this.outPreviewEmptyEl.style.display = 'flex';
+      this.lastCapturedInTime = -1;
+      this.lastCapturedOutTime = -1;
+      return;
+    }
+
+    // 時間テキスト更新
+    this.inPreviewTimeEl.textContent = VideoEngine.formatTime(state.startTime);
+    this.outPreviewTimeEl.textContent = VideoEngine.formatTime(state.endTime);
+
+    // IN点フレーム更新
+    if (Math.abs(this.lastCapturedInTime - state.startTime) > 0.03) {
+      this.lastCapturedInTime = state.startTime;
+      const inDataUrl = await VideoEngine.captureDataUrlAtTime(state.videoUrl, state.startTime, 280);
+      if (inDataUrl) {
+        this.inPreviewImgEl.src = inDataUrl;
+        this.inPreviewImgEl.style.display = 'block';
+        this.inPreviewEmptyEl.style.display = 'none';
+      }
+    }
+
+    // OUT点フレーム更新
+    if (Math.abs(this.lastCapturedOutTime - state.endTime) > 0.03) {
+      this.lastCapturedOutTime = state.endTime;
+      const outDataUrl = await VideoEngine.captureDataUrlAtTime(state.videoUrl, state.endTime, 280);
+      if (outDataUrl) {
+        this.outPreviewImgEl.src = outDataUrl;
+        this.outPreviewImgEl.style.display = 'block';
+        this.outPreviewEmptyEl.style.display = 'none';
+      }
     }
   }
 }

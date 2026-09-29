@@ -88,9 +88,9 @@ export class Controls {
           <option value="140">140秒 - X (Twitter) 動画上限 (2分20秒)</option>
         </select>
 
-        <button id="clearRangeBtn" class="btn btn-sm clear-range-btn" title="選択範囲を解除 (Esc)">
-          ${Icons.close}
-          <span>範囲解除</span>
+        <button id="clearRangeBtn" class="btn btn-sm btn-clear-range" title="選択範囲をクリア (Esc)">
+          ${Icons.xCircle}
+          <span>選択クリア</span>
         </button>
       </div>
     `;

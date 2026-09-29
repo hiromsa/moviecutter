@@ -83,6 +83,40 @@ export class VideoEngine {
   }
 
   /**
+   * 指定したタイムスタンプのフレームを軽量なDataURL（画像）として取得
+   */
+  public static async captureDataUrlAtTime(
+    videoUrl: string,
+    time: number,
+    targetWidth: number = 320
+  ): Promise<string | null> {
+    const video = document.createElement('video');
+    video.src = videoUrl;
+    video.crossOrigin = 'anonymous';
+    video.muted = true;
+
+    return new Promise((resolve) => {
+      video.onloadedmetadata = () => {
+        video.currentTime = Math.min(Math.max(0, time), video.duration);
+      };
+      video.onseeked = () => {
+        const aspect = (video.videoHeight || 9) / (video.videoWidth || 16);
+        const targetHeight = Math.round(targetWidth * aspect);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
+        }
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      video.onerror = () => resolve(null);
+    });
+  }
+
+  /**
    * タイムライン用のサムネイルストリップを高速生成
    */
   public static async generateThumbnails(
