@@ -481,15 +481,22 @@ body {
   transition: width 0.1s ease-out;
 }
 
-/* ルーラー */
+/* ルーラー（キャレット専用シーク＆スクラブ領域） */
 .timeline-ruler {
   position: relative;
-  height: 20px;
+  height: 24px;
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   color: var(--text-dim);
   user-select: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+}
+
+.timeline-ruler:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .ruler-tick {
@@ -499,13 +506,14 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  pointer-events: none;
 }
 
 .ruler-tick-mark {
   width: 1px;
   height: 6px;
   background: var(--text-dim);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 /* タイムライン本体（トラック） */
@@ -513,10 +521,11 @@ body {
   position: relative;
   height: 68px;
   background: var(--bg-timeline);
-  border-radius: var(--radius-sm);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-  cursor: pointer;
+  border-top: none;
+  overflow: visible; /* 再生ヘッドやハンドルの上下はみ出し許容 */
+  cursor: crosshair; /* 範囲選択ドラッグを意識させるカーソル */
   user-select: none;
 }
 
@@ -527,6 +536,8 @@ body {
   display: flex;
   opacity: 0.65;
   pointer-events: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  overflow: hidden;
 }
 
 .thumbnail-strip img {
@@ -546,13 +557,14 @@ body {
   border-bottom: 2px solid var(--accent-range);
   pointer-events: none;
   box-shadow: 0 0 16px var(--accent-range-glow);
+  z-index: 10;
 }
 
 /* 範囲ハンドル (In / Out) */
 .timeline-handle {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: -2px;
+  bottom: -2px;
   width: 14px;
   background: var(--accent-range);
   cursor: ew-resize;
@@ -560,7 +572,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, transform 0.15s;
+  transition: background 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-xs);
 }
 
 .timeline-handle:hover {
@@ -571,35 +585,34 @@ body {
 .timeline-handle::after {
   content: '';
   width: 2px;
-  height: 20px;
-  background: rgba(0, 0, 0, 0.7);
+  height: 22px;
+  background: rgba(0, 0, 0, 0.75);
   border-radius: 1px;
 }
 
+/* InハンドルとOutハンドルの中央基準点を厳密に一致させる */
 .timeline-handle-in {
   left: 0;
   transform: translateX(-50%);
-  border-top-left-radius: var(--radius-xs);
-  border-bottom-left-radius: var(--radius-xs);
 }
 
 .timeline-handle-out {
-  right: 0;
-  transform: translateX(50%);
-  border-top-right-radius: var(--radius-xs);
-  border-bottom-right-radius: var(--radius-xs);
+  left: 0;
+  transform: translateX(-50%); /* ズレを解消！Outも中央基準 */
 }
 
-/* 再生ヘッド (Playhead) */
+/* 再生ヘッド (Playhead) - ルーラー上部まで拡張 */
 .timeline-playhead {
   position: absolute;
-  top: -4px;
-  bottom: -4px;
+  top: -28px; /* ルーラーの高さ分上まで突き出す */
+  bottom: -2px;
   width: 2px;
   background: var(--accent-playhead);
-  z-index: 25;
-  pointer-events: none;
-  box-shadow: 0 0 12px var(--accent-playhead-glow);
+  z-index: 30;
+  pointer-events: auto; /* ルーラー上で掴めるように */
+  cursor: ew-resize;
+  box-shadow: 0 0 10px var(--accent-playhead-glow);
+  transform: translateX(-50%); /* 中央合わせ */
 }
 
 .playhead-head {
@@ -607,10 +620,16 @@ body {
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 16px;
   background: var(--accent-playhead);
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%);
+  cursor: grab;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.playhead-head:active {
+  cursor: grabbing;
 }
 
 /* コントロールバー */

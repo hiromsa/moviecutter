@@ -48,9 +48,11 @@ export class Timeline {
 
     this.rulerEl = document.createElement('div');
     this.rulerEl.className = 'timeline-ruler';
+    this.rulerEl.title = 'クリックまたはドラッグしてキャレット（再生ヘッド）を移動';
 
     this.trackEl = document.createElement('div');
     this.trackEl.className = 'timeline-track-container';
+    this.trackEl.title = 'ドラッグで範囲指定 / クリックでキャレット移動';
 
     this.thumbnailStripEl = document.createElement('div');
     this.thumbnailStripEl.className = 'thumbnail-strip';
@@ -68,7 +70,7 @@ export class Timeline {
 
     this.playheadEl = document.createElement('div');
     this.playheadEl.className = 'timeline-playhead';
-    this.playheadEl.innerHTML = '<div class="playhead-head"></div>';
+    this.playheadEl.innerHTML = '<div class="playhead-head" title="再生ヘッド - ドラッグして移動"></div>';
 
     this.init();
   }
@@ -182,9 +184,9 @@ export class Timeline {
       }, 1000);
     });
 
-    // タイムラインクリックでシーク
-    this.trackEl.addEventListener('mousedown', (e) => {
-      if (e.target === this.inHandleEl || e.target === this.outHandleEl) return;
+    // ① ルーラー領域でのシーク＆ドラッグ（ハンドルに邪魔されない専用キャレット操作）
+    const startPlayheadScrubbing = (e: MouseEvent) => {
+      e.preventDefault();
       this.isDraggingPlayhead = true;
       this.updatePlayheadFromMouseEvent(e);
 
@@ -202,9 +204,55 @@ export class Timeline {
 
       window.addEventListener('mousemove', onMouseMove);
       window.addEventListener('mouseup', onMouseUp);
+    };
+
+    this.rulerEl.addEventListener('mousedown', startPlayheadScrubbing);
+    this.playheadEl.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      startPlayheadScrubbing(e);
     });
 
-    // Inハンドル ドラッグ
+    // ② トラック領域でのマウス操作：
+    // ドラッグした時は「マウスダウン〜マウスアップ」で開始・終了を一括指定
+    // 単なるクリックの時はキャレットを移動
+    this.trackEl.addEventListener('mousedown', (e) => {
+      if (e.target === this.inHandleEl || e.target === this.outHandleEl) return;
+
+      const startX = e.clientX;
+      const startTime = this.getTimeFromMouseEvent(e);
+      let isRangeDragging = false;
+
+      const onMouseMove = (moveEvt: MouseEvent) => {
+        const dx = Math.abs(moveEvt.clientX - startX);
+        if (!isRangeDragging && dx >= 6) {
+          isRangeDragging = true;
+        }
+
+        if (isRangeDragging) {
+          const currentTime = this.getTimeFromMouseEvent(moveEvt);
+          const s = Math.min(startTime, currentTime);
+          const end = Math.max(startTime, currentTime);
+          this.appState.setRange(s, end);
+          this.appState.setCurrentTime(currentTime);
+        }
+      };
+
+      const onMouseUp = (upEvt: MouseEvent) => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+
+        if (!isRangeDragging) {
+          // 単なるクリック（移動距離6px未満）だった場合はキャレットをシーク
+          const clickTime = this.getTimeFromMouseEvent(upEvt);
+          this.appState.setCurrentTime(clickTime);
+        }
+      };
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    });
+
+    // ③ Inハンドル ドラッグ（個別微調整）
     this.inHandleEl.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       this.isDraggingIn = true;
@@ -227,7 +275,7 @@ export class Timeline {
       window.addEventListener('mouseup', onMouseUp);
     });
 
-    // Outハンドル ドラッグ
+    // ④ Outハンドル ドラッグ（個別微調整）
     this.outHandleEl.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       this.isDraggingOut = true;
@@ -341,6 +389,7 @@ export class Timeline {
     const outPercent = (state.endTime / duration) * 100;
     const playheadPercent = (state.currentTime / duration) * 100;
 
+    // ハンドルとハイライトの位置更新（In/Outともに中央線がパーセント位置と完全一致）
     this.inHandleEl.style.left = `${inPercent}%`;
     this.outHandleEl.style.left = `${outPercent}%`;
 

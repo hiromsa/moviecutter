@@ -50,8 +50,20 @@ export class HelpModal {
         </div>
 
         <div>
-          <h4 style="margin-bottom: 0.5rem; font-size: 0.95rem; color: var(--accent-range);">⌨️ キーボードショートカット & 操作</h4>
+          <h4 style="margin-bottom: 0.5rem; font-size: 0.95rem; color: var(--accent-range);">⌨️ キーボードショートカット & マウス操作</h4>
           <table class="shortcut-table">
+            <tr>
+              <td><span class="kbd">ルーラーをクリック/ドラッグ</span></td>
+              <td>ハンドルに関係なくキャレット（再生ヘッド）を直接シーク</td>
+            </tr>
+            <tr>
+              <td><span class="kbd">トラックをドラッグ</span></td>
+              <td>開始点(In)〜終了点(Out)を一発で範囲選択</td>
+            </tr>
+            <tr>
+              <td><span class="kbd">トラックをクリック</span></td>
+              <td>範囲を変更せずキャレットをクリック位置へ移動</td>
+            </tr>
             <tr>
               <td><span class="kbd">Space</span></td>
               <td>再生 / 一時停止</td>
