@@ -3,7 +3,7 @@ import { Icons } from './icons';
 
 /**
  * 編集・切り取り範囲設定コントロールバー
- * 開始点(In)・終了点(Out)の設定、時間入力、長さロック、秒数プリセット、解除に特化
+ * 開始点(In)・終了点(Out)の設定、時間入力、長さロック、SNS/AIプリセット、範囲解除に特化
  */
 export class Controls {
   private container: HTMLElement;
@@ -19,6 +19,9 @@ export class Controls {
   private clearRangeBtn!: HTMLButtonElement;
   private quick3sBtn!: HTMLButtonElement;
   private quick5sBtn!: HTMLButtonElement;
+  private quick15sBtn!: HTMLButtonElement;
+  private quick60sBtn!: HTMLButtonElement;
+  private presetSelect!: HTMLSelectElement;
 
   constructor() {
     this.appState = AppState.getInstance();
@@ -64,13 +67,28 @@ export class Controls {
         </div>
       </div>
 
-      <!-- クイック秒数プリセット & 範囲解除 -->
+      <!-- クイック秒数プリセット (AI & SNS) & 範囲解除 -->
       <div class="control-group range-action-group">
-        <div class="quick-duration-group" title="ワンクリックで現在位置から指定秒数を選択">
-          <button id="quick3sBtn" class="btn btn-sm quick-preset-btn">3s</button>
-          <button id="quick5sBtn" class="btn btn-sm quick-preset-btn">5s</button>
+        <div class="quick-duration-group" title="ワンクリックで指定秒数を選択">
+          <button id="quick3sBtn" class="btn btn-sm quick-preset-btn" title="AI動画推奨 (3秒)">3s</button>
+          <button id="quick5sBtn" class="btn btn-sm quick-preset-btn" title="AI動画推奨 (5秒)">5s</button>
+          <button id="quick15sBtn" class="btn btn-sm quick-preset-btn" title="Instagram Stories / TikTok (15秒)">15s</button>
+          <button id="quick60sBtn" class="btn btn-sm quick-preset-btn" title="YouTube Shorts / Reels (60秒)">60s</button>
         </div>
-        <button id="clearRangeBtn" class="btn btn-sm btn-outline clear-range-btn" title="選択範囲を解除 (Esc)">
+
+        <select id="presetSelect" class="btn btn-sm preset-select" title="SNS・プラットフォーム別の制限時間プリセット">
+          <option value="" disabled selected>SNS制限 ▾</option>
+          <option value="3">3秒 - AI動画標準 (Runway / Luma / Pika)</option>
+          <option value="5">5秒 - AI動画標準 (Gen-3 / Kling)</option>
+          <option value="10">10秒 - AI動画長尺 (Kling 10s)</option>
+          <option value="15">15秒 - Instagram Stories / TikTok / Reels</option>
+          <option value="30">30秒 - Instagram Reels / 短尺広告</option>
+          <option value="60">60秒 - YouTube Shorts / TikTok / Reels</option>
+          <option value="90">90秒 - Instagram Reels (最長)</option>
+          <option value="140">140秒 - X (Twitter) 動画上限 (2分20秒)</option>
+        </select>
+
+        <button id="clearRangeBtn" class="btn btn-sm clear-range-btn" title="選択範囲を解除 (Esc)">
           ${Icons.close}
           <span>範囲解除</span>
         </button>
@@ -87,6 +105,9 @@ export class Controls {
     this.clearRangeBtn = this.container.querySelector('#clearRangeBtn') as HTMLButtonElement;
     this.quick3sBtn = this.container.querySelector('#quick3sBtn') as HTMLButtonElement;
     this.quick5sBtn = this.container.querySelector('#quick5sBtn') as HTMLButtonElement;
+    this.quick15sBtn = this.container.querySelector('#quick15sBtn') as HTMLButtonElement;
+    this.quick60sBtn = this.container.querySelector('#quick60sBtn') as HTMLButtonElement;
+    this.presetSelect = this.container.querySelector('#presetSelect') as HTMLSelectElement;
 
     this.setupEvents();
     this.appState.subscribe((state, key) => this.onStateChange(state, key));
@@ -157,13 +178,30 @@ export class Controls {
       this.appState.clearRange();
     });
 
-    // クイック選択プリセット (3秒 / 5秒)
+    // クイック選択プリセット (3秒 / 5秒 / 15秒 / 60秒)
     this.quick3sBtn.addEventListener('click', () => {
       this.appState.setClipDuration(3.0);
     });
 
     this.quick5sBtn.addEventListener('click', () => {
       this.appState.setClipDuration(5.0);
+    });
+
+    this.quick15sBtn.addEventListener('click', () => {
+      this.appState.setClipDuration(15.0);
+    });
+
+    this.quick60sBtn.addEventListener('click', () => {
+      this.appState.setClipDuration(60.0);
+    });
+
+    // SNS / プラットフォームプリセットセレクト
+    this.presetSelect.addEventListener('change', () => {
+      const val = parseFloat(this.presetSelect.value);
+      if (!isNaN(val) && val > 0) {
+        this.appState.setClipDuration(val);
+        this.presetSelect.selectedIndex = 0; // プレースホルダーに戻す
+      }
     });
 
     // キーボードショートカット（アプリ全体）
@@ -234,6 +272,9 @@ export class Controls {
     this.clearRangeBtn.disabled = !hasRange;
     this.quick3sBtn.disabled = !hasVideo;
     this.quick5sBtn.disabled = !hasVideo;
+    this.quick15sBtn.disabled = !hasVideo;
+    this.quick60sBtn.disabled = !hasVideo;
+    this.presetSelect.disabled = !hasVideo;
 
     if (changedKey === 'startTime' || changedKey === 'hasRange' || !changedKey) {
       if (document.activeElement !== this.startTimeInput) {
