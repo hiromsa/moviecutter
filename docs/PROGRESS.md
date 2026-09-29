@@ -1,8 +1,8 @@
 # 開発進捗記録 (PROGRESS.md)
 
 ## 現在のステータス
-- **バージョン**: `v0.0.1-beta.19+ec9d450`
-- **フェーズ**: 編集クリア（初期化）機能、ガイドモーダルのタブ化・スクロール最適化、完全ローカル安全性バッジの追加、GitHubリンク削除の実装完了
+- **バージョン**: `v0.0.1-beta.20+05bba52`
+- **フェーズ**: Cloudflare Pages デプロイ対応（Cross-Origin Isolation ヘッダー `_headers` 配置）完了
 
 ## 完了した作業
 - [x] プロジェクト初期化・Git設定 (`https://github.com/hiromsa/moviecutter`)
@@ -141,4 +141,12 @@
   - ツールチップやガイドモーダル内にも詳細なセキュリティ説明を記載。
 - **GitHubリンクの削除**:
   - 不要となった外部GitHubリンクをヘッダーから削除し、エディタ用途に特化したすっきりとした画面構成に最適化。
+
+
+## [v0.0.1-beta.20+05bba52] - 2026-09-29
+### 追加・改善機能
+- **Cloudflare Pages デプロイ対応（Cross-Origin Isolation ヘッダー `_headers` 配置）**:
+  - `public/_headers` を新規作成し、`Cross-Origin-Embedder-Policy: require-corp` および `Cross-Origin-Opener-Policy: same-origin` を定義。
+  - Cloudflare Pages へアップロード・公開した本番環境でも、FFmpeg.wasm（SharedArrayBuffer）がエラーなく安定動作するようインフラ設定を整備。
+
 
