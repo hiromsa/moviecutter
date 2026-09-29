@@ -274,9 +274,16 @@ export class AppState {
     this.notify('playbackRate');
   }
 
-  public setVolume(volume: number, isMuted: boolean): void {
-    this.state.volume = volume;
-    this.state.isMuted = isMuted;
+  public setVolume(volume: number, isMuted?: boolean): void {
+    this.state.volume = Math.max(0, Math.min(1, volume));
+    if (isMuted !== undefined) {
+      this.state.isMuted = isMuted;
+    }
+    this.notify('volume');
+  }
+
+  public toggleMute(): void {
+    this.state.isMuted = !this.state.isMuted;
     this.notify('volume');
   }
 

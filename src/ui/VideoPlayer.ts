@@ -182,5 +182,10 @@ export class VideoPlayer {
     if (changedKey === 'playbackRate' || !changedKey) {
       this.videoEl.playbackRate = state.playbackRate;
     }
+
+    if (changedKey === 'volume' || !changedKey) {
+      this.videoEl.volume = state.isMuted ? 0 : state.volume;
+      this.videoEl.muted = state.isMuted;
+    }
   }
 }

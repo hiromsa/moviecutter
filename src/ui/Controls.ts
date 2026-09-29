@@ -13,6 +13,9 @@ export class Controls {
   private loopBtn!: HTMLButtonElement;
   private loopLabel!: HTMLElement;
   private speedSelect!: HTMLSelectElement;
+  private volumeMuteBtn!: HTMLButtonElement;
+  private volumeSlider!: HTMLInputElement;
+  private volumeValue!: HTMLElement;
   private startTimeInput!: HTMLInputElement;
   private endTimeInput!: HTMLInputElement;
   private durationInput!: HTMLInputElement;
@@ -72,7 +75,7 @@ export class Controls {
         </button>
       </div>
 
-      <!-- 再生速度 -->
+      <!-- 再生速度 & ボリューム -->
       <div class="control-group">
         <select id="speedSelect" class="btn" title="再生速度" style="padding: 0.45rem 0.6rem;">
           <option value="0.25">0.25x</option>
@@ -81,6 +84,14 @@ export class Controls {
           <option value="1.5">1.5x</option>
           <option value="2">2.0x</option>
         </select>
+
+        <div class="volume-control-box" title="プレビュー音量">
+          <button id="volumeMuteBtn" class="btn btn-icon btn-sm volume-mute-btn" title="ミュート切替">
+            ${Icons.volume2}
+          </button>
+          <input type="range" id="volumeSlider" min="0" max="1" step="0.02" value="1" class="volume-slider">
+          <span id="volumeValue" class="volume-value-label">100%</span>
+        </div>
       </div>
 
       <!-- 時間入力 & 切り取り時間（長さ指定・ロック・クイック・クリア） -->
@@ -120,6 +131,9 @@ export class Controls {
     this.loopBtn = this.container.querySelector('#loopBtn') as HTMLButtonElement;
     this.loopLabel = this.container.querySelector('#loopLabel') as HTMLElement;
     this.speedSelect = this.container.querySelector('#speedSelect') as HTMLSelectElement;
+    this.volumeMuteBtn = this.container.querySelector('#volumeMuteBtn') as HTMLButtonElement;
+    this.volumeSlider = this.container.querySelector('#volumeSlider') as HTMLInputElement;
+    this.volumeValue = this.container.querySelector('#volumeValue') as HTMLElement;
     this.startTimeInput = this.container.querySelector('#startTimeInput') as HTMLInputElement;
     this.endTimeInput = this.container.querySelector('#endTimeInput') as HTMLInputElement;
     this.durationInput = this.container.querySelector('#durationInput') as HTMLInputElement;
@@ -184,6 +198,16 @@ export class Controls {
     this.speedSelect.addEventListener('change', () => {
       const rate = parseFloat(this.speedSelect.value);
       this.appState.setPlaybackRate(rate);
+    });
+
+    // ボリューム操作
+    this.volumeMuteBtn.addEventListener('click', () => {
+      this.appState.toggleMute();
+    });
+
+    this.volumeSlider.addEventListener('input', () => {
+      const val = parseFloat(this.volumeSlider.value);
+      this.appState.setVolume(val, false);
     });
 
     this.startTimeInput.addEventListener('change', () => {
@@ -310,6 +334,8 @@ export class Controls {
     if (jumpOutBtnControls) jumpOutBtnControls.disabled = !hasVideo;
     this.loopBtn.disabled = !hasVideo;
     this.speedSelect.disabled = !hasVideo;
+    this.volumeMuteBtn.disabled = !hasVideo;
+    this.volumeSlider.disabled = !hasVideo;
     this.startTimeInput.disabled = !hasVideo;
     this.endTimeInput.disabled = !hasVideo;
     this.durationInput.disabled = !hasVideo;
@@ -364,6 +390,29 @@ export class Controls {
         this.durationInputField.classList.add('locked');
       } else {
         this.durationInputField.classList.remove('locked');
+      }
+    }
+
+    // 音量状態のUI反映
+    if (changedKey === 'volume' || !changedKey) {
+      const effectiveVolume = state.isMuted ? 0 : state.volume;
+      if (document.activeElement !== this.volumeSlider) {
+        this.volumeSlider.value = state.volume.toString();
+      }
+      this.volumeValue.textContent = `${Math.round(effectiveVolume * 100)}%`;
+
+      if (state.isMuted || state.volume === 0) {
+        this.volumeMuteBtn.innerHTML = Icons.volumeX;
+        this.volumeMuteBtn.title = 'ミュート中 (クリックで解除)';
+        this.volumeMuteBtn.classList.add('muted');
+      } else if (state.volume < 0.5) {
+        this.volumeMuteBtn.innerHTML = Icons.volume1;
+        this.volumeMuteBtn.title = '音量小 (クリックでミュート)';
+        this.volumeMuteBtn.classList.remove('muted');
+      } else {
+        this.volumeMuteBtn.innerHTML = Icons.volume2;
+        this.volumeMuteBtn.title = '音量大 (クリックでミュート)';
+        this.volumeMuteBtn.classList.remove('muted');
       }
     }
   }

@@ -225,7 +225,7 @@ export class Timeline {
     // ② ルーラー領域でのマウス操作：
     // 上下ドラッグで時間軸の拡大/縮小（ズームイン・ズームアウト）
     // 左右ドラッグで再生位置スクラブ、クリックでその時間へ移動
-    this.rulerEl.title = 'クリックで再生位置移動 / 上下ドラッグで拡大縮小';
+    this.rulerEl.title = 'クリックで再生位置移動 / 上下にドラッグしてズーム';
     this.rulerEl.addEventListener('mousedown', (e: MouseEvent) => {
       e.preventDefault();
       const startY = e.clientY;
@@ -233,7 +233,10 @@ export class Timeline {
       const initialZoom = this.appState.getState().timelineZoom;
       const clickTime = this.getTimeFromMouseEvent(e);
       const viewportRect = this.viewportEl.getBoundingClientRect();
-      const mouseViewportX = e.clientX - viewportRect.left;
+      const anchorViewportX = e.clientX - viewportRect.left;
+      const duration = this.appState.getState().duration;
+      // クリック位置の時間比率（ドラッグ中不変）
+      const timeRatio = duration > 0 ? clickTime / duration : 0;
 
       let isZooming = false;
       let isScrubbing = false;
@@ -242,7 +245,7 @@ export class Timeline {
         const deltaY = moveEvt.clientY - startY;
         const deltaX = moveEvt.clientX - startX;
 
-        // モード未判定の場合、移動方向でズームかスクラブを決定
+        // モード未確定の場合、移動方向の優位性で決定（一度決まったら固定）
         if (!isZooming && !isScrubbing) {
           if (Math.abs(deltaY) >= 4 && Math.abs(deltaY) >= Math.abs(deltaX)) {
             isZooming = true;
@@ -255,16 +258,16 @@ export class Timeline {
 
         if (isZooming) {
           // 上へドラッグ（deltaY < 0）で拡大、下へドラッグ（deltaY > 0）で縮小
-          const zoomDelta = -deltaY / 30;
-          const newZoom = Math.max(1, Math.min(10, initialZoom + zoomDelta));
+          // 滑らかで制御しやすい感度（約55px移動で1.0x変化）
+          const zoomDelta = -deltaY / 55;
+          const newZoom = Math.max(1.0, Math.min(10.0, initialZoom + zoomDelta));
           this.appState.setTimelineZoom(newZoom);
 
-          // マウスカーソル位置の時間軸がズレにくいようスクロール調整
-          const duration = this.appState.getState().duration;
+          // マウスカーソル位置の時間軸がブレずに安定するようスクロール位置を同期
           if (duration > 0) {
-            const ratio = clickTime / duration;
-            const newTrackWidth = this.viewportEl.clientWidth * newZoom;
-            this.viewportEl.scrollLeft = Math.max(0, ratio * newTrackWidth - mouseViewportX);
+            const totalContentWidth = this.viewportEl.clientWidth * newZoom;
+            const targetScrollLeft = timeRatio * totalContentWidth - anchorViewportX;
+            this.viewportEl.scrollLeft = Math.max(0, targetScrollLeft);
           }
         } else if (isScrubbing) {
           this.updatePlayheadFromMouseEvent(moveEvt);
