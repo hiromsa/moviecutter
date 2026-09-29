@@ -1,8 +1,8 @@
 # 開発進捗記録 (PROGRESS.md)
 
 ## 現在のステータス
-- **バージョン**: `v0.0.1-beta.20+05bba52`
-- **フェーズ**: Cloudflare Pages デプロイ対応（Cross-Origin Isolation ヘッダー `_headers` 配置）完了
+- **バージョン**: `v0.0.1-beta.21+d4547fa`
+- **フェーズ**: SNS・Twitter (X) OGP / Twitter Cards (summary_large_image) 対応と高品質バナー画像の設置完了
 
 ## 完了した作業
 - [x] プロジェクト初期化・Git設定 (`https://github.com/hiromsa/moviecutter`)
@@ -148,5 +148,14 @@
 - **Cloudflare Pages デプロイ対応（Cross-Origin Isolation ヘッダー `_headers` 配置）**:
   - `public/_headers` を新規作成し、`Cross-Origin-Embedder-Policy: require-corp` および `Cross-Origin-Opener-Policy: same-origin` を定義。
   - Cloudflare Pages へアップロード・公開した本番環境でも、FFmpeg.wasm（SharedArrayBuffer）がエラーなく安定動作するようインフラ設定を整備。
+
+
+## [v0.0.1-beta.21+d4547fa] - 2026-09-29
+### 追加・改善機能
+- **Twitter / X カード（summary_large_image）＆ OGP 完全対応**:
+  - `index.html` に Twitter カード（`twitter:card` = `summary_large_image`）および OGP メタタグ（タイトル、解説文、画像URL、画像サイズ）を完全実装。
+  - `public/ogp.jpg` に、近未来サイバーダークスタジオの世界観を表現した映画クオリティのハイクオリティOGPバナー画像（ネオンシアン波形、ホログラフィックフレーム、タイムラインUI）を新規配備。
+  - Twitter/X や Facebook、Discord、LINE等で `https://moviecutter.pages.dev/` を貼り付けた際に、目を引く美麗な大画面カードが自動展開されるよう対応。
+
 
 
