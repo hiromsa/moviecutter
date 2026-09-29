@@ -11,6 +11,10 @@ export class Controls {
 
   private setInBtn!: HTMLButtonElement;
   private setOutBtn!: HTMLButtonElement;
+  private inStepPrevBtn!: HTMLButtonElement;
+  private inStepNextBtn!: HTMLButtonElement;
+  private outStepPrevBtn!: HTMLButtonElement;
+  private outStepNextBtn!: HTMLButtonElement;
   private startTimeInput!: HTMLInputElement;
   private endTimeInput!: HTMLInputElement;
   private durationInput!: HTMLInputElement;
@@ -50,14 +54,34 @@ export class Controls {
 
       <!-- 時間入力 & 切り取り時間（長さ指定・ロック） -->
       <div class="time-inputs-wrapper">
-        <div class="time-field" title="開始秒数">
-          <label>IN</label>
-          <input type="number" id="startTimeInput" step="0.01" min="0" placeholder="--">
+        <!-- IN (開始) 微調整グループ: |< IN[   ] >| -->
+        <div class="time-adjust-group" title="開始位置の微調整 (クリック: 1フレーム / Shift+クリック: 1秒)">
+          <button id="inStepPrevBtn" class="time-step-btn" title="INを1フレーム戻す (-1f / Shift: -1s)">
+            ${Icons.stepBack}
+          </button>
+          <div class="time-field" title="開始秒数">
+            <label>IN</label>
+            <input type="number" id="startTimeInput" step="0.01" min="0" placeholder="--">
+          </div>
+          <button id="inStepNextBtn" class="time-step-btn" title="INを1フレーム進める (+1f / Shift: +1s)">
+            ${Icons.stepForward}
+          </button>
         </div>
-        <div class="time-field" title="終了秒数">
-          <label>OUT</label>
-          <input type="number" id="endTimeInput" step="0.01" min="0" placeholder="--">
+
+        <!-- OUT (終了) 微調整グループ: |< OUT[   ] >| -->
+        <div class="time-adjust-group" title="終了位置の微調整 (クリック: 1フレーム / Shift+クリック: 1秒)">
+          <button id="outStepPrevBtn" class="time-step-btn" title="OUTを1フレーム戻す (-1f / Shift: -1s)">
+            ${Icons.stepBack}
+          </button>
+          <div class="time-field" title="終了秒数">
+            <label>OUT</label>
+            <input type="number" id="endTimeInput" step="0.01" min="0" placeholder="--">
+          </div>
+          <button id="outStepNextBtn" class="time-step-btn" title="OUTを1フレーム進める (+1f / Shift: +1s)">
+            ${Icons.stepForward}
+          </button>
         </div>
+
         <div class="time-field duration-input-field" id="durationInputField" title="切り取り時間 (秒) - 入力すると終了点が自動計算されます">
           <label>長さ</label>
           <input type="number" id="durationInput" step="0.01" min="0.05" placeholder="--">
@@ -97,6 +121,10 @@ export class Controls {
 
     this.setInBtn = this.container.querySelector('#setInBtn') as HTMLButtonElement;
     this.setOutBtn = this.container.querySelector('#setOutBtn') as HTMLButtonElement;
+    this.inStepPrevBtn = this.container.querySelector('#inStepPrevBtn') as HTMLButtonElement;
+    this.inStepNextBtn = this.container.querySelector('#inStepNextBtn') as HTMLButtonElement;
+    this.outStepPrevBtn = this.container.querySelector('#outStepPrevBtn') as HTMLButtonElement;
+    this.outStepNextBtn = this.container.querySelector('#outStepNextBtn') as HTMLButtonElement;
     this.startTimeInput = this.container.querySelector('#startTimeInput') as HTMLInputElement;
     this.endTimeInput = this.container.querySelector('#endTimeInput') as HTMLInputElement;
     this.durationInput = this.container.querySelector('#durationInput') as HTMLInputElement;
@@ -114,6 +142,60 @@ export class Controls {
   }
 
   private setupEvents(): void {
+    // IN (開始) / OUT (終了) の微調整 (クリック: 1フレーム / Shift: 1秒)
+    const stepIn = (direction: -1 | 1, isShift: boolean) => {
+      const state = this.appState.getState();
+      if (!state.videoUrl) return;
+      const step = isShift ? 1.0 : (state.fps > 0 ? 1 / state.fps : 0.0333);
+      const currentIn = state.hasRange ? state.startTime : state.currentTime;
+      let newIn = Math.max(0, currentIn + direction * step);
+      if (state.duration > 0) {
+        newIn = Math.min(state.duration, newIn);
+      }
+
+      if (state.isDurationLocked && state.hasRange) {
+        const len = state.endTime - state.startTime;
+        this.appState.setRange(newIn, newIn + len);
+      } else {
+        if (!state.hasRange) {
+          const end = Math.min(state.duration, newIn + 3);
+          this.appState.setRange(newIn, end);
+        } else {
+          this.appState.setStartTime(newIn);
+        }
+      }
+      this.appState.setCurrentTime(newIn);
+    };
+
+    const stepOut = (direction: -1 | 1, isShift: boolean) => {
+      const state = this.appState.getState();
+      if (!state.videoUrl) return;
+      const step = isShift ? 1.0 : (state.fps > 0 ? 1 / state.fps : 0.0333);
+      const currentOut = state.hasRange ? state.endTime : state.currentTime;
+      let newOut = Math.max(0, currentOut + direction * step);
+      if (state.duration > 0) {
+        newOut = Math.min(state.duration, newOut);
+      }
+
+      if (state.isDurationLocked && state.hasRange) {
+        const len = state.endTime - state.startTime;
+        this.appState.setRange(newOut - len, newOut);
+      } else {
+        if (!state.hasRange) {
+          const start = Math.max(0, newOut - 3);
+          this.appState.setRange(start, newOut);
+        } else {
+          this.appState.setEndTime(newOut);
+        }
+      }
+      this.appState.setCurrentTime(newOut);
+    };
+
+    this.inStepPrevBtn.addEventListener('click', (e) => stepIn(-1, e.shiftKey));
+    this.inStepNextBtn.addEventListener('click', (e) => stepIn(1, e.shiftKey));
+    this.outStepPrevBtn.addEventListener('click', (e) => stepOut(-1, e.shiftKey));
+    this.outStepNextBtn.addEventListener('click', (e) => stepOut(1, e.shiftKey));
+
     this.setInBtn.addEventListener('click', () => {
       const state = this.appState.getState();
       if (state.isDurationLocked && state.hasRange) {
@@ -265,6 +347,10 @@ export class Controls {
 
     this.setInBtn.disabled = !hasVideo;
     this.setOutBtn.disabled = !hasVideo;
+    this.inStepPrevBtn.disabled = !hasVideo;
+    this.inStepNextBtn.disabled = !hasVideo;
+    this.outStepPrevBtn.disabled = !hasVideo;
+    this.outStepNextBtn.disabled = !hasVideo;
     this.startTimeInput.disabled = !hasVideo;
     this.endTimeInput.disabled = !hasVideo;
     this.durationInput.disabled = !hasVideo;

@@ -8,6 +8,7 @@ export class VideoPlayer {
   private mainViewEl: HTMLElement;
   private videoEl: HTMLVideoElement;
   private dropzoneEl: HTMLElement;
+  private replaceOverlayEl: HTMLElement;
   private hudTimeEl: HTMLElement;
   private hudInfoEl: HTMLElement;
 
@@ -45,6 +46,10 @@ export class VideoPlayer {
 
     this.dropzoneEl = document.createElement('div');
     this.dropzoneEl.className = 'dropzone-overlay';
+
+    // 動画読み込み後のドラッグオーバー用オーバーレイ（点線＆ドロップガイド）
+    this.replaceOverlayEl = document.createElement('div');
+    this.replaceOverlayEl.className = 'replace-drop-overlay';
 
     this.hudTimeEl = document.createElement('div');
     this.hudTimeEl.className = 'hud-badge time';
@@ -118,6 +123,16 @@ export class VideoPlayer {
       <div class="dropzone-text-sub">クリックしてファイルを選択 (MP4, WebM, MOV, AVI...)</div>
     `;
 
+    this.replaceOverlayEl.innerHTML = `
+      <div class="replace-drop-content">
+        <div class="dropzone-icon-box">
+          ${Icons.uploadCloud}
+        </div>
+        <div class="dropzone-text-main">新しい動画をドロップして差し替え</div>
+        <div class="dropzone-text-sub">クリックまたはドラッグ＆ドロップ (MP4, WebM, MOV, AVI...)</div>
+      </div>
+    `;
+
     const hudOverlay = document.createElement('div');
     hudOverlay.className = 'player-hud-overlay';
     hudOverlay.appendChild(this.hudTimeEl);
@@ -125,6 +140,7 @@ export class VideoPlayer {
 
     this.mainViewEl.appendChild(this.videoEl);
     this.mainViewEl.appendChild(this.dropzoneEl);
+    this.mainViewEl.appendChild(this.replaceOverlayEl);
     this.mainViewEl.appendChild(hudOverlay);
 
     this.rangeSidebarEl.appendChild(this.inPreviewCard);
@@ -140,20 +156,45 @@ export class VideoPlayer {
   private setupEvents(): void {
     // ドロップゾーンクリック
     this.dropzoneEl.addEventListener('click', () => this.onSelectFile());
+    this.replaceOverlayEl.addEventListener('click', () => this.onSelectFile());
 
-    // ドラッグ＆ドロップハンドリング
-    this.container.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      this.dropzoneEl.classList.add('drag-over');
+    // ドラッグ＆ドロップハンドリング (動画未選択時・読み込み後両方で点線とオーバーレイを確実に表示)
+    let dragCounter = 0;
+
+    window.addEventListener('dragenter', (e) => {
+      if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
+        dragCounter++;
+        this.replaceOverlayEl.classList.add('active');
+        this.dropzoneEl.classList.add('drag-over');
+      }
     });
 
-    this.container.addEventListener('dragleave', (e) => {
+    window.addEventListener('dragleave', () => {
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        this.replaceOverlayEl.classList.remove('active');
+        this.dropzoneEl.classList.remove('drag-over');
+      }
+    });
+
+    window.addEventListener('dragover', (e) => {
       e.preventDefault();
+      if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    });
+
+    window.addEventListener('drop', () => {
+      dragCounter = 0;
+      this.replaceOverlayEl.classList.remove('active');
       this.dropzoneEl.classList.remove('drag-over');
     });
 
     this.container.addEventListener('drop', (e) => {
       e.preventDefault();
+      dragCounter = 0;
+      this.replaceOverlayEl.classList.remove('active');
       this.dropzoneEl.classList.remove('drag-over');
       if (e.dataTransfer && e.dataTransfer.files.length > 0) {
         const file = e.dataTransfer.files[0];

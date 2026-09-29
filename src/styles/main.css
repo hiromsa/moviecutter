@@ -427,6 +427,42 @@ body {
   }
 }
 
+/* 動画読み込み後のドラッグ＆ドロップ差し替えオーバーレイ (鮮やかな点線と暗転ブラー) */
+.replace-drop-overlay {
+  position: absolute;
+  inset: 0.5rem;
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--primary);
+  background: rgba(4, 7, 14, 0.92);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.98);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 0 30px var(--primary-glow), inset 0 0 20px rgba(6, 182, 212, 0.15);
+  cursor: pointer;
+}
+
+.replace-drop-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.replace-drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  pointer-events: none;
+  text-align: center;
+}
+
 /* ドラッグ＆ドロップゾーン（動画未選択時） */
 .dropzone-overlay {
   position: absolute;
@@ -1039,6 +1075,151 @@ body {
   background: rgba(16, 185, 129, 0.15);
   border-color: var(--accent-range);
   color: var(--accent-range);
+}
+
+/* 時間入力ラッパー & 微調整ボタングループ */
+.time-inputs-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: rgba(6, 10, 18, 0.5);
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+/* 微調整グループ: |< IN[   ] >| */
+.time-adjust-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(15, 23, 42, 0.65);
+  padding: 0.15rem 0.3rem;
+  border-radius: var(--radius-xs);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 微調整ステップボタン (|< / >|) */
+.time-step-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.time-step-btn:hover:not(:disabled) {
+  background: rgba(6, 182, 212, 0.22);
+  border-color: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 0 10px var(--primary-glow);
+  transform: translateY(-1px);
+}
+
+.time-step-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.time-step-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.time-step-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+
+/* 時間入力フィールド */
+.time-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.15rem;
+}
+
+.time-field label {
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.time-field input[type="number"] {
+  width: 66px;
+  height: 26px;
+  background: rgba(2, 4, 8, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-xs);
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.time-field input[type="number"]:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 8px var(--primary-glow);
+}
+
+/* ブラウザ標準の上下スピンボタン（▲▼）を非表示にして押し間違いを防止 */
+.time-field input[type="number"]::-webkit-inner-spin-button,
+.time-field input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.time-field input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* 長さ・ロックボタンスタイル */
+.duration-input-field {
+  padding-left: 0.45rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.lock-duration-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.lock-duration-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.duration-input-field.locked .lock-duration-btn {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #34d399;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
 }
 
 /* クイック選択・解除ボタングループ */
