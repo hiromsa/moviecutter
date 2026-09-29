@@ -146,4 +146,79 @@ export class FFmpegEngine {
       throw err;
     }
   }
+
+  /**
+   * 選択範囲の音声のみを抽出 (MP3 / WAV)
+   * @param file 入力動画ファイル
+   * @param startTime 開始秒数
+   * @param endTime 終了秒数
+   * @param format 出力フォーマット ('mp3' | 'wav')
+   * @param onProgress 進捗コールバック
+   */
+  public async extractAudio(
+    file: File,
+    startTime: number,
+    endTime: number,
+    format: 'mp3' | 'wav',
+    onProgress?: (progress: number) => void
+  ): Promise<Blob> {
+    if (!this.isLoaded || !this.ffmpeg) {
+      await this.load(onProgress);
+    }
+    if (!this.ffmpeg) throw new Error('FFmpeg is not initialized');
+
+    if (onProgress) {
+      this.ffmpeg.setProgress(({ ratio }) => {
+        onProgress(Math.min(100, Math.max(0, ratio * 100)));
+      });
+    }
+
+    const ext = file.name.split('.').pop() || 'mp4';
+    const inputName = `audio_in_${Date.now()}.${ext}`;
+    const outputName = `audio_out_${Date.now()}.${format}`;
+
+    try {
+      const fileData = await file.arrayBuffer();
+      this.ffmpeg.FS('writeFile', inputName, new Uint8Array(fileData));
+
+      if (format === 'mp3') {
+        await this.ffmpeg.run(
+          '-ss', startTime.toFixed(3),
+          '-to', endTime.toFixed(3),
+          '-i', inputName,
+          '-vn',
+          '-c:a', 'libmp3lame',
+          '-q:a', '2',
+          outputName
+        );
+      } else {
+        // WAV (PCM 16-bit 非圧縮)
+        await this.ffmpeg.run(
+          '-ss', startTime.toFixed(3),
+          '-to', endTime.toFixed(3),
+          '-i', inputName,
+          '-vn',
+          '-c:a', 'pcm_s16le',
+          outputName
+        );
+      }
+
+      const outData = this.ffmpeg.FS('readFile', outputName);
+      const mimeType = format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
+      const blob = new Blob([outData.buffer], { type: mimeType });
+
+      // クリーンアップ
+      try {
+        this.ffmpeg.FS('unlink', inputName);
+        this.ffmpeg.FS('unlink', outputName);
+      } catch (e) {
+        // unlink エラーは無視
+      }
+
+      return blob;
+    } catch (err) {
+      console.error(`Audio extraction (${format}) failed:`, err);
+      throw err;
+    }
+  }
 }

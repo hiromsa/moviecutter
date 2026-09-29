@@ -192,4 +192,20 @@ export const Icons = {
       <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
     </svg>
   `,
+
+  // 音楽 / 音声 (MP3)
+  music: `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 18V5l12-2v13"/>
+      <circle cx="6" cy="18" r="3"/>
+      <circle cx="18" cy="16" r="3"/>
+    </svg>
+  `,
+
+  // 波形 / オーディオ (WAV)
+  waveform: `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 10v4"/><path d="M6 6v12"/><path d="M10 3v18"/><path d="M14 8v8"/><path d="M18 5v14"/><path d="M22 10v4"/>
+    </svg>
+  `,
 };

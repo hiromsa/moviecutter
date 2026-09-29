@@ -881,10 +881,10 @@ body {
   height: 13px;
 }
 
-/* エクスポート・アクションパネル */
+/* エクスポート・アクションパネル (動画・音声・静止画・ラストフレームの4カード構成) */
 .export-panel-card {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr;
+  grid-template-columns: 1.25fr 1fr 1fr 1fr;
   gap: 1.15rem;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -893,7 +893,13 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1200px) {
+  .export-panel-card {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 680px) {
   .export-panel-card {
     grid-template-columns: 1fr;
   }
@@ -941,6 +947,12 @@ body {
   background: rgba(6, 182, 212, 0.15);
   border-color: rgba(6, 182, 212, 0.3);
   color: var(--primary);
+}
+
+.action-icon-badge.amber {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
 }
 
 .action-icon-badge.purple {

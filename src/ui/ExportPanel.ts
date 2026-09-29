@@ -13,6 +13,8 @@ export class ExportPanel {
   private copyFrameBtn!: HTMLButtonElement;
   private captureLastFrameBtn!: HTMLButtonElement;
   private copyLastFrameBtn!: HTMLButtonElement;
+  private extractMp3Btn!: HTMLButtonElement;
+  private extractWavBtn!: HTMLButtonElement;
   private progressBarContainer!: HTMLElement;
   private progressBarFill!: HTMLElement;
 
@@ -49,7 +51,28 @@ export class ExportPanel {
         </div>
       </div>
 
-      <!-- ② 現在フレームをPNG保存 & クリップボードコピー -->
+      <!-- ② 音声を切り取り保存 (MP3 / WAV) -->
+      <div class="action-card">
+        <div class="action-card-header">
+          <div class="action-icon-badge amber">
+            ${Icons.music}
+          </div>
+          <span class="action-card-title">選択範囲の音声を抽出</span>
+        </div>
+        <p class="action-card-desc">BGM・セリフ・効果音素材やWhisper文字起こし用。汎用MP3または高音質WAVで保存。</p>
+        <div class="action-buttons-row">
+          <button id="extractMp3Btn" class="btn btn-sm" style="flex: 1;" title="MP3形式で保存 (.mp3)">
+            ${Icons.music}
+            <span>MP3保存</span>
+          </button>
+          <button id="extractWavBtn" class="btn btn-sm" style="flex: 1;" title="非圧縮高音質WAVで保存 (.wav)">
+            ${Icons.waveform}
+            <span>WAV保存</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ③ 現在フレームをPNG保存 & クリップボードコピー -->
       <div class="action-card">
         <div class="action-card-header">
           <div class="action-icon-badge">
@@ -70,7 +93,7 @@ export class ExportPanel {
         </div>
       </div>
 
-      <!-- ③ 最終フレームを保存 & クリップボードコピー (AIで続きを作る専用) -->
+      <!-- ④ 最終フレームを保存 & クリップボードコピー (AIで続きを作る専用) -->
       <div class="action-card">
         <div class="action-card-header">
           <div class="action-icon-badge purple">
@@ -93,6 +116,8 @@ export class ExportPanel {
     `;
 
     this.cutVideoBtn = this.container.querySelector('#cutVideoBtn') as HTMLButtonElement;
+    this.extractMp3Btn = this.container.querySelector('#extractMp3Btn') as HTMLButtonElement;
+    this.extractWavBtn = this.container.querySelector('#extractWavBtn') as HTMLButtonElement;
     this.captureFrameBtn = this.container.querySelector('#captureFrameBtn') as HTMLButtonElement;
     this.copyFrameBtn = this.container.querySelector('#copyFrameBtn') as HTMLButtonElement;
     this.captureLastFrameBtn = this.container.querySelector('#captureLastFrameBtn') as HTMLButtonElement;
@@ -225,6 +250,60 @@ export class ExportPanel {
         this.copyLastFrameBtn.disabled = false;
       }
     });
+
+    // 選択範囲の音声保存 (MP3 / WAV)
+    this.extractMp3Btn.addEventListener('click', () => this.extractAudio('mp3'));
+    this.extractWavBtn.addEventListener('click', () => this.extractAudio('wav'));
+  }
+
+  /**
+   * 音声抽出処理 (MP3 / WAV)
+   */
+  private async extractAudio(format: 'mp3' | 'wav'): Promise<void> {
+    const state = this.appState.getState();
+    if (!state.videoFile || !state.hasRange) return;
+
+    const label = format.toUpperCase();
+    try {
+      this.extractMp3Btn.disabled = true;
+      this.extractWavBtn.disabled = true;
+      this.cutVideoBtn.disabled = true;
+      this.progressBarContainer.classList.add('active');
+      this.progressBarFill.style.width = '10%';
+      this.appState.setFFmpegStatus('processing', `音声を${label}形式で抽出中...`);
+
+      const ffmpeg = FFmpegEngine.getInstance();
+      const blob = await ffmpeg.extractAudio(
+        state.videoFile,
+        state.startTime,
+        state.endTime,
+        format,
+        (progress) => {
+          this.progressBarFill.style.width = `${Math.max(10, progress)}%`;
+        }
+      );
+
+      this.progressBarFill.style.width = '100%';
+
+      const baseName = (state.videoFile.name || 'video').replace(/\.[^/.]+$/, '');
+      const filename = `audio_${baseName}_${state.startTime.toFixed(2)}s-${state.endTime.toFixed(2)}s.${format}`;
+      const mimeType = format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
+
+      await this.saveFile(blob, filename, mimeType, format);
+      this.appState.setFFmpegStatus('ready', `${label}音声の保存が完了しました！`);
+    } catch (err: any) {
+      console.error(err);
+      this.appState.setFFmpegStatus('error', `${label}抽出処理でエラーが発生しました: ` + err.message);
+      alert(`音声（${label}）の抽出中にエラーが発生しました。コンソールログを確認してください。`);
+    } finally {
+      this.extractMp3Btn.disabled = false;
+      this.extractWavBtn.disabled = false;
+      this.cutVideoBtn.disabled = false;
+      setTimeout(() => {
+        this.progressBarContainer.classList.remove('active');
+        this.progressBarFill.style.width = '0%';
+      }, 1200);
+    }
   }
 
   /**
@@ -258,11 +337,17 @@ export class ExportPanel {
     // File System Access API 対応ブラウザ
     if ('showSaveFilePicker' in window) {
       try {
+        let desc = 'File';
+        if (extension === 'mp4') desc = 'MP4 Video';
+        else if (extension === 'png') desc = 'PNG Image';
+        else if (extension === 'mp3') desc = 'MP3 Audio';
+        else if (extension === 'wav') desc = 'WAV Audio';
+
         const handle = await (window as any).showSaveFilePicker({
           suggestedName,
           types: [
             {
-              description: extension === 'mp4' ? 'MP4 Video' : 'PNG Image',
+              description: desc,
               accept: { [mimeType]: [`.${extension}`] },
             },
           ],
@@ -323,6 +408,9 @@ export class ExportPanel {
     const isProcessing = state.ffmpegStatus === 'processing';
 
     this.cutVideoBtn.disabled = !hasRange || isProcessing;
+    this.extractMp3Btn.disabled = !hasRange || isProcessing;
+    this.extractWavBtn.disabled = !hasRange || isProcessing;
+
     if (!hasVideo) {
       this.cutVideoBtn.innerHTML = `${Icons.scissors} カット保存`;
       this.cutVideoBtn.title = '動画を読み込んでください';
