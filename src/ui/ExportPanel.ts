@@ -1,6 +1,7 @@
 import { AppState, AppStateData } from '../state/AppState';
 import { FFmpegEngine } from '../core/FFmpegEngine';
 import { VideoEngine } from '../core/VideoEngine';
+import { Icons } from './icons';
 
 export class ExportPanel {
   private container: HTMLElement;
@@ -30,12 +31,15 @@ export class ExportPanel {
     this.container.innerHTML = `
       <!-- ① 切り取り保存 (MP4) -->
       <div class="action-card">
-        <div class="action-card-title">
-          <span>✂️</span>
-          <span>選択範囲の動画を切り取り</span>
+        <div class="action-card-header">
+          <div class="action-icon-badge cyan">
+            ${Icons.scissors}
+          </div>
+          <span class="action-card-title">選択範囲の動画を切り取り</span>
         </div>
         <p class="action-card-desc">再エンコードなしの超高速ストリームコピーで瞬時にMP4動画を出力・保存します。</p>
         <button id="cutVideoBtn" class="btn btn-primary" style="margin-top: 0.5rem;">
+          ${Icons.download}
           <span>MP4動画として保存 (.mp4)</span>
         </button>
         <div class="progress-bar-container" id="progressBarContainer">
@@ -45,24 +49,30 @@ export class ExportPanel {
 
       <!-- ② 現在フレームをPNG保存 (AIリファレンス用) -->
       <div class="action-card">
-        <div class="action-card-title">
-          <span>📸</span>
-          <span>現在のフレームを保存</span>
+        <div class="action-card-header">
+          <div class="action-icon-badge">
+            ${Icons.camera}
+          </div>
+          <span class="action-card-title">現在のフレームを保存</span>
         </div>
         <p class="action-card-desc">キャレットが指している位置の最高画質静止画(PNG)をダウンロードします。</p>
         <button id="captureFrameBtn" class="btn" style="margin-top: 0.5rem;">
+          ${Icons.camera}
           <span>現在フレーム (.png)</span>
         </button>
       </div>
 
       <!-- ③ 最終フレームを保存 (AIで続きを作る専用) -->
       <div class="action-card">
-        <div class="action-card-title">
-          <span>🎬</span>
-          <span>選択範囲のラストフレーム</span>
+        <div class="action-card-header">
+          <div class="action-icon-badge purple">
+            ${Icons.sparkles}
+          </div>
+          <span class="action-card-title">選択範囲のラストフレーム</span>
         </div>
         <p class="action-card-desc">選択範囲の最後の瞬間をワンクリック抽出。AIに読み込ませて「続きの動画」を生成するのに最適です。</p>
         <button id="captureLastFrameBtn" class="btn btn-ai" style="margin-top: 0.5rem;">
+          ${Icons.sparkles}
           <span>ラストフレーム抽出 (.png)</span>
         </button>
       </div>

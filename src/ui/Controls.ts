@@ -1,5 +1,6 @@
 import { AppState, AppStateData } from '../state/AppState';
 import { VideoEngine } from '../core/VideoEngine';
+import { Icons } from './icons';
 
 export class Controls {
   private container: HTMLElement;
@@ -11,6 +12,7 @@ export class Controls {
   private setInBtn!: HTMLButtonElement;
   private setOutBtn!: HTMLButtonElement;
   private loopBtn!: HTMLButtonElement;
+  private loopLabel!: HTMLElement;
   private speedSelect!: HTMLSelectElement;
   private startTimeInput!: HTMLInputElement;
   private endTimeInput!: HTMLInputElement;
@@ -31,27 +33,38 @@ export class Controls {
     this.container.innerHTML = `
       <!-- 再生コントロール -->
       <div class="control-group">
-        <button id="prevFrameBtn" class="btn btn-icon" title="1フレーム戻る (←)">◀ 1f</button>
-        <button id="playBtn" class="btn btn-primary play-btn" title="再生 / 一時停止 (Space)">▶</button>
-        <button id="nextFrameBtn" class="btn btn-icon" title="1フレーム進む (→)">1f ▶</button>
+        <button id="prevFrameBtn" class="btn btn-icon" title="1フレーム戻る (←)">
+          ${Icons.stepBack}
+        </button>
+        <button id="playBtn" class="btn btn-primary play-btn" title="再生 / 一時停止 (Space)">
+          ${Icons.play}
+        </button>
+        <button id="nextFrameBtn" class="btn btn-icon" title="1フレーム進む (→)">
+          ${Icons.stepForward}
+        </button>
       </div>
 
       <!-- 範囲マーカー & ジャンプ -->
       <div class="control-group">
-        <button id="jumpInBtnControls" class="btn" title="開始点 (In) へ移動 (I または Home)">
-          <span>⏮️ Inへ</span>
+        <button id="jumpInBtnControls" class="btn btn-sm" title="開始点 (In) へ移動 (I または Home)">
+          ${Icons.jumpToIn}
+          <span>Inへ</span>
         </button>
-        <button id="setInBtn" class="btn" title="現在位置を開始点に設定 ([)">
-          <span>[ 開始点</span>
+        <button id="setInBtn" class="btn btn-sm" title="現在位置を開始点に設定 ([)">
+          ${Icons.bracketIn}
+          <span>In設定</span>
         </button>
-        <button id="setOutBtn" class="btn" title="現在位置を終了点に設定 (])">
-          <span>終了点 ]</span>
+        <button id="setOutBtn" class="btn btn-sm" title="現在位置を終了点に設定 (])">
+          <span>Out設定</span>
+          ${Icons.bracketOut}
         </button>
-        <button id="jumpOutBtnControls" class="btn" title="終了点 (Out) へ移動 (O または End)">
-          <span>Outへ ⏭️</span>
+        <button id="jumpOutBtnControls" class="btn btn-sm" title="終了点 (Out) へ移動 (O または End)">
+          <span>Outへ</span>
+          ${Icons.jumpToOut}
         </button>
-        <button id="loopBtn" class="btn" title="選択範囲をループ再生 (L)">
-          <span>🔁 ループ: OFF</span>
+        <button id="loopBtn" class="btn btn-sm" title="選択範囲をループ再生 (L)">
+          ${Icons.repeat}
+          <span id="loopLabel">ループ: OFF</span>
         </button>
       </div>
 
@@ -90,6 +103,7 @@ export class Controls {
     this.setInBtn = this.container.querySelector('#setInBtn') as HTMLButtonElement;
     this.setOutBtn = this.container.querySelector('#setOutBtn') as HTMLButtonElement;
     this.loopBtn = this.container.querySelector('#loopBtn') as HTMLButtonElement;
+    this.loopLabel = this.container.querySelector('#loopLabel') as HTMLElement;
     this.speedSelect = this.container.querySelector('#speedSelect') as HTMLSelectElement;
     this.startTimeInput = this.container.querySelector('#startTimeInput') as HTMLInputElement;
     this.endTimeInput = this.container.querySelector('#endTimeInput') as HTMLInputElement;
@@ -219,12 +233,14 @@ export class Controls {
     this.endTimeInput.disabled = !hasVideo;
 
     if (changedKey === 'isPlaying' || !changedKey) {
-      this.playBtn.innerHTML = state.isPlaying ? '❚❚' : '▶';
+      this.playBtn.innerHTML = state.isPlaying ? Icons.pause : Icons.play;
       this.playBtn.title = state.isPlaying ? '一時停止 (Space)' : '再生 (Space)';
     }
 
     if (changedKey === 'isLoopingRange' || !changedKey) {
-      this.loopBtn.innerHTML = state.isLoopingRange ? '🔁 ループ: ON' : '🔁 ループ: OFF';
+      if (this.loopLabel) {
+        this.loopLabel.textContent = state.isLoopingRange ? 'ループ: ON' : 'ループ: OFF';
+      }
       if (state.isLoopingRange) {
         this.loopBtn.classList.add('btn-primary');
       } else {

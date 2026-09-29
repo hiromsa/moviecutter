@@ -1,5 +1,6 @@
 import { AppState, AppStateData } from '../state/AppState';
 import { VideoEngine } from '../core/VideoEngine';
+import { Icons } from './icons';
 
 export class Timeline {
   private container: HTMLElement;
@@ -80,20 +81,26 @@ export class Timeline {
     // ツールバー構築
     this.headerBarEl.innerHTML = `
       <div class="timeline-toolbar-left">
-        <span class="timeline-title">🎞️ タイムライン</span>
+        <span class="timeline-title">${Icons.timeline} <span>タイムライン</span></span>
         <button id="jumpInBtn" class="btn btn-sm" title="キャレットを開始地点 (In) へ移動">
-          <span>⏮️ In点へ移動</span>
+          ${Icons.jumpToIn}
+          <span>Inへジャンプ</span>
         </button>
         <button id="jumpOutBtn" class="btn btn-sm" title="キャレットを終了地点 (Out) へ移動">
-          <span>Out点へ移動 ⏭️</span>
+          <span>Outへジャンプ</span>
+          ${Icons.jumpToOut}
         </button>
       </div>
 
       <div class="timeline-toolbar-right">
         <span class="zoom-label">ズーム:</span>
-        <button id="zoomOutBtn" class="btn btn-icon btn-sm" title="縮小 (Alt + ホイール下)">➖</button>
+        <button id="zoomOutBtn" class="btn btn-icon btn-sm" title="縮小 (Alt + ホイール下)">
+          ${Icons.zoomOut}
+        </button>
         <input type="range" id="zoomSlider" min="1" max="10" step="0.2" value="1" class="zoom-slider">
-        <button id="zoomInBtn" class="btn btn-icon btn-sm" title="拡大 (Alt + ホイール上)">➕</button>
+        <button id="zoomInBtn" class="btn btn-icon btn-sm" title="拡大 (Alt + ホイール上)">
+          ${Icons.zoomIn}
+        </button>
         <button id="zoomBadge" class="zoom-badge-btn" title="クリックで等倍(1.0x)にリセット">1.0x</button>
       </div>
     `;

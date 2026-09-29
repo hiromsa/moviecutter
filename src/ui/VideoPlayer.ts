@@ -1,5 +1,6 @@
 import { AppState, AppStateData } from '../state/AppState';
 import { VideoEngine } from '../core/VideoEngine';
+import { Icons } from './icons';
 
 export class VideoPlayer {
   private container: HTMLElement;
@@ -46,9 +47,11 @@ export class VideoPlayer {
 
   private init(): void {
     this.dropzoneEl.innerHTML = `
-      <div class="dropzone-icon">🎞️</div>
+      <div class="dropzone-icon-box">
+        ${Icons.uploadCloud}
+      </div>
       <div class="dropzone-text-main">動画ファイルをここにドラッグ＆ドロップ</div>
-      <div class="dropzone-text-sub">またはクリックしてファイルを選択 (MP4, WebM, MOV, AVI...)</div>
+      <div class="dropzone-text-sub">クリックしてファイルを選択 (MP4, WebM, MOV, AVI...)</div>
     `;
 
     const hudOverlay = document.createElement('div');

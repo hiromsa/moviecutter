@@ -1,4 +1,5 @@
 import { APP_VERSION_DETAIL } from '../config/version';
+import { Icons } from './icons';
 
 export class HelpModal {
   private backdrop: HTMLElement;
@@ -25,8 +26,13 @@ export class HelpModal {
     this.backdrop.innerHTML = `
       <div class="modal-card">
         <div class="modal-header">
-          <div class="modal-title">📖 MovieCutter ガイド</div>
-          <button class="close-btn" id="closeHelpModal">✕</button>
+          <div class="modal-title" style="display: flex; align-items: center; gap: 0.5rem;">
+            ${Icons.help}
+            <span>MovieCutter ガイド</span>
+          </div>
+          <button class="close-btn" id="closeHelpModal" title="閉じる">
+            ${Icons.close}
+          </button>
         </div>
 
         <div style="font-size: 0.9rem; color: var(--text-muted);">

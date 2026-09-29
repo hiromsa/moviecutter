@@ -1,4 +1,5 @@
 import { APP_VERSION_SHORT } from '../config/version';
+import { Icons } from './icons';
 
 export class Header {
   private container: HTMLElement;
@@ -20,19 +21,26 @@ export class Header {
   private render(): void {
     this.container.innerHTML = `
       <div class="brand-wrapper">
-        <div class="brand-logo-icon">✂️</div>
-        <div>
-          <span class="brand-title">MovieCutter</span>
-          <span class="version-badge" title="バージョン">${APP_VERSION_SHORT}</span>
+        <div class="brand-logo-icon">
+          ${Icons.scissors}
+        </div>
+        <div class="brand-info">
+          <div class="brand-title-row">
+            <span class="brand-title">MovieCutter</span>
+            <span class="version-badge" title="バージョン">${APP_VERSION_SHORT}</span>
+          </div>
+          <span class="brand-tagline">AI-Powered Video Clip & Frame Studio</span>
         </div>
       </div>
 
       <div class="header-actions">
         <button id="headerOpenBtn" class="btn btn-primary" title="動画ファイルを開く">
-          <span>📂 動画を開く</span>
+          ${Icons.folder}
+          <span>動画を開く</span>
         </button>
         <button id="headerHelpBtn" class="btn" title="使い方・キーボードショートカット">
-          <span>❓ ガイド</span>
+          ${Icons.help}
+          <span>ガイド</span>
         </button>
         <a href="https://github.com/hiromsa/moviecutter" target="_blank" rel="noopener noreferrer" class="btn btn-icon" title="GitHub リポジトリ">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
