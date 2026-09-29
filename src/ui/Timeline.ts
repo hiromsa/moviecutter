@@ -22,6 +22,15 @@ export class Timeline {
   private zoomBadgeEl!: HTMLElement;
   private jumpInBtn!: HTMLButtonElement;
   private jumpOutBtn!: HTMLButtonElement;
+  private playBtn!: HTMLButtonElement;
+  private prevFrameBtn!: HTMLButtonElement;
+  private nextFrameBtn!: HTMLButtonElement;
+  private loopBtn!: HTMLButtonElement;
+  private loopLabel!: HTMLElement;
+  private speedSelect!: HTMLSelectElement;
+  private volumeMuteBtn!: HTMLButtonElement;
+  private volumeSlider!: HTMLInputElement;
+  private volumeValue!: HTMLElement;
 
   private appState: AppState;
 
@@ -111,35 +120,85 @@ export class Timeline {
   }
 
   private init(): void {
-    // ツールバー構築
+    // ツールバー構築（左: 再生・ループ・ジャンプ、右: 速度・音量・ズーム）
     this.headerBarEl.innerHTML = `
       <div class="timeline-toolbar-left">
         <span class="timeline-title">${Icons.timeline} <span>タイムライン</span></span>
-        <button id="jumpInBtn" class="btn btn-sm" title="キャレットを開始地点 (In) へ移動">
-          ${Icons.jumpToIn}
-          <span>Inへジャンプ</span>
+
+        <div class="timeline-transport-group">
+          <button id="prevFrameBtn" class="btn btn-icon btn-sm" title="1フレーム戻る (←)">
+            ${Icons.stepBack}
+          </button>
+          <button id="playBtn" class="btn btn-primary btn-sm play-btn-timeline" title="再生 / 一時停止 (Space)">
+            ${Icons.play}
+          </button>
+          <button id="nextFrameBtn" class="btn btn-icon btn-sm" title="1フレーム進む (→)">
+            ${Icons.stepForward}
+          </button>
+        </div>
+
+        <button id="loopBtn" class="btn btn-sm loop-btn-timeline" title="選択範囲をループ再生 (L)">
+          ${Icons.repeat}
+          <span id="loopLabel">ループ: OFF</span>
         </button>
-        <button id="jumpOutBtn" class="btn btn-sm" title="キャレットを終了地点 (Out) へ移動">
-          <span>Outへジャンプ</span>
-          ${Icons.jumpToOut}
-        </button>
+
+        <div class="timeline-jump-group">
+          <button id="jumpInBtn" class="btn btn-sm" title="キャレットを開始地点 (In) へ移動 (I または Home)">
+            ${Icons.jumpToIn}
+            <span>Inへ</span>
+          </button>
+          <button id="jumpOutBtn" class="btn btn-sm" title="キャレットを終了地点 (Out) へ移動 (O または End)">
+            <span>Outへ</span>
+            ${Icons.jumpToOut}
+          </button>
+        </div>
       </div>
 
       <div class="timeline-toolbar-right">
-        <span class="zoom-label">ズーム:</span>
-        <button id="zoomOutBtn" class="btn btn-icon btn-sm" title="縮小 (Alt + ホイール下)">
-          ${Icons.zoomOut}
-        </button>
-        <input type="range" id="zoomSlider" min="1" max="10" step="0.2" value="1" class="zoom-slider">
-        <button id="zoomInBtn" class="btn btn-icon btn-sm" title="拡大 (Alt + ホイール上)">
-          ${Icons.zoomIn}
-        </button>
-        <button id="zoomBadge" class="zoom-badge-btn" title="クリックで等倍(1.0x)にリセット">1.0x</button>
+        <!-- 再生速度 -->
+        <select id="speedSelect" class="btn btn-sm speed-select-timeline" title="再生速度">
+          <option value="0.25">0.25x</option>
+          <option value="0.5">0.5x</option>
+          <option value="1" selected>1.0x</option>
+          <option value="1.5">1.5x</option>
+          <option value="2">2.0x</option>
+        </select>
+
+        <!-- プレビュー音量 -->
+        <div class="volume-control-box timeline-volume-box" title="プレビュー音量">
+          <button id="volumeMuteBtn" class="btn btn-icon btn-sm volume-mute-btn" title="ミュート切替">
+            ${Icons.volume2}
+          </button>
+          <input type="range" id="volumeSlider" min="0" max="1" step="0.02" value="1" class="volume-slider">
+          <span id="volumeValue" class="volume-value-label">100%</span>
+        </div>
+
+        <!-- タイムラインズーム -->
+        <div class="timeline-zoom-group">
+          <span class="zoom-label">ズーム:</span>
+          <button id="zoomOutBtn" class="btn btn-icon btn-sm" title="縮小 (Alt + ホイール下)">
+            ${Icons.zoomOut}
+          </button>
+          <input type="range" id="zoomSlider" min="1" max="10" step="0.2" value="1" class="zoom-slider">
+          <button id="zoomInBtn" class="btn btn-icon btn-sm" title="拡大 (Alt + ホイール上)">
+            ${Icons.zoomIn}
+          </button>
+          <button id="zoomBadge" class="zoom-badge-btn" title="クリックで等倍(1.0x)にリセット">1.0x</button>
+        </div>
       </div>
     `;
 
+    this.playBtn = this.headerBarEl.querySelector('#playBtn') as HTMLButtonElement;
+    this.prevFrameBtn = this.headerBarEl.querySelector('#prevFrameBtn') as HTMLButtonElement;
+    this.nextFrameBtn = this.headerBarEl.querySelector('#nextFrameBtn') as HTMLButtonElement;
+    this.loopBtn = this.headerBarEl.querySelector('#loopBtn') as HTMLButtonElement;
+    this.loopLabel = this.headerBarEl.querySelector('#loopLabel') as HTMLElement;
     this.jumpInBtn = this.headerBarEl.querySelector('#jumpInBtn') as HTMLButtonElement;
     this.jumpOutBtn = this.headerBarEl.querySelector('#jumpOutBtn') as HTMLButtonElement;
+    this.speedSelect = this.headerBarEl.querySelector('#speedSelect') as HTMLSelectElement;
+    this.volumeMuteBtn = this.headerBarEl.querySelector('#volumeMuteBtn') as HTMLButtonElement;
+    this.volumeSlider = this.headerBarEl.querySelector('#volumeSlider') as HTMLInputElement;
+    this.volumeValue = this.headerBarEl.querySelector('#volumeValue') as HTMLElement;
     this.zoomSliderEl = this.headerBarEl.querySelector('#zoomSlider') as HTMLInputElement;
     this.zoomBadgeEl = this.headerBarEl.querySelector('#zoomBadge') as HTMLElement;
     const zoomOutBtn = this.headerBarEl.querySelector('#zoomOutBtn') as HTMLButtonElement;
@@ -172,6 +231,25 @@ export class Timeline {
   }
 
   private setupEvents(zoomOutBtn: HTMLButtonElement, zoomInBtn: HTMLButtonElement): void {
+    // 再生トランスポート
+    this.playBtn.addEventListener('click', () => {
+      this.appState.togglePlay();
+    });
+
+    this.prevFrameBtn.addEventListener('click', () => {
+      this.appState.stepFrame(-1);
+    });
+
+    this.nextFrameBtn.addEventListener('click', () => {
+      this.appState.stepFrame(1);
+    });
+
+    // ループ再生
+    this.loopBtn.addEventListener('click', () => {
+      const state = this.appState.getState();
+      this.appState.setLoopingRange(!state.isLoopingRange);
+    });
+
     // ジャンプボタン
     this.jumpInBtn.addEventListener('click', () => {
       this.appState.jumpToStart();
@@ -181,6 +259,22 @@ export class Timeline {
     this.jumpOutBtn.addEventListener('click', () => {
       this.appState.jumpToEnd();
       this.scrollPlayheadIntoView();
+    });
+
+    // 再生速度
+    this.speedSelect.addEventListener('change', () => {
+      const rate = parseFloat(this.speedSelect.value);
+      this.appState.setPlaybackRate(rate);
+    });
+
+    // 音量操作
+    this.volumeMuteBtn.addEventListener('click', () => {
+      this.appState.toggleMute();
+    });
+
+    this.volumeSlider.addEventListener('input', () => {
+      const val = parseFloat(this.volumeSlider.value);
+      this.appState.setVolume(val, false);
     });
 
     // ズーム操作
@@ -539,9 +633,62 @@ export class Timeline {
     this.zoomBadgeEl.textContent = `${zoom.toFixed(1)}x`;
 
     const hasVideo = state.videoFile !== null;
+    this.playBtn.disabled = !hasVideo;
+    this.prevFrameBtn.disabled = !hasVideo;
+    this.nextFrameBtn.disabled = !hasVideo;
+    this.loopBtn.disabled = !hasVideo;
     this.jumpInBtn.disabled = !hasVideo;
     this.jumpOutBtn.disabled = !hasVideo;
+    this.speedSelect.disabled = !hasVideo;
+    this.volumeMuteBtn.disabled = !hasVideo;
+    this.volumeSlider.disabled = !hasVideo;
     this.zoomSliderEl.disabled = !hasVideo;
+
+    // 再生/一時停止
+    if (changedKey === 'isPlaying' || !changedKey) {
+      this.playBtn.innerHTML = state.isPlaying ? Icons.pause : Icons.play;
+      this.playBtn.title = state.isPlaying ? '一時停止 (Space)' : '再生 (Space)';
+    }
+
+    // ループ再生
+    if (changedKey === 'isLoopingRange' || !changedKey) {
+      if (this.loopLabel) {
+        this.loopLabel.textContent = state.isLoopingRange ? 'ループ: ON' : 'ループ: OFF';
+      }
+      if (state.isLoopingRange) {
+        this.loopBtn.classList.add('btn-primary');
+      } else {
+        this.loopBtn.classList.remove('btn-primary');
+      }
+    }
+
+    // 再生速度
+    if (changedKey === 'playbackRate' || !changedKey) {
+      this.speedSelect.value = state.playbackRate.toString();
+    }
+
+    // 音量
+    if (changedKey === 'volume' || !changedKey) {
+      const effectiveVolume = state.isMuted ? 0 : state.volume;
+      if (document.activeElement !== this.volumeSlider) {
+        this.volumeSlider.value = state.volume.toString();
+      }
+      this.volumeValue.textContent = `${Math.round(effectiveVolume * 100)}%`;
+
+      if (state.isMuted || state.volume === 0) {
+        this.volumeMuteBtn.innerHTML = Icons.volumeX;
+        this.volumeMuteBtn.title = 'ミュート中 (クリックで解除)';
+        this.volumeMuteBtn.classList.add('muted');
+      } else if (state.volume < 0.5) {
+        this.volumeMuteBtn.innerHTML = Icons.volume1;
+        this.volumeMuteBtn.title = '音量小 (クリックでミュート)';
+        this.volumeMuteBtn.classList.remove('muted');
+      } else {
+        this.volumeMuteBtn.innerHTML = Icons.volume2;
+        this.volumeMuteBtn.title = '音量大 (クリックでミュート)';
+        this.volumeMuteBtn.classList.remove('muted');
+      }
+    }
 
     if (changedKey === 'duration' || changedKey === 'timelineZoom' || changedKey === 'videoFile' || !changedKey) {
       this.updateRuler(state.duration, zoom);

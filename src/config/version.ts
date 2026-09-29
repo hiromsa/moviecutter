@@ -7,8 +7,8 @@
 export const APP_MAJOR = 0;
 export const APP_MINOR = 0;
 export const APP_PATCH = 1;
-export const APP_BUILD_NUMBER = 13;
-export const APP_COMMIT_HASH = 'efd2ae9';
+export const APP_BUILD_NUMBER = 14;
+export const APP_COMMIT_HASH = '8dd3e3f';
 
 export const APP_VERSION_SHORT = `v${APP_MAJOR}.${APP_MINOR}.${APP_PATCH}-beta.${APP_BUILD_NUMBER}`;
 export const APP_VERSION_FULL = `${APP_VERSION_SHORT}+${APP_COMMIT_HASH}`;
