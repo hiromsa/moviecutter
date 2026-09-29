@@ -36,13 +36,19 @@ export class Controls {
         <button id="nextFrameBtn" class="btn btn-icon" title="1フレーム進む (→)">1f ▶</button>
       </div>
 
-      <!-- 範囲マーカー -->
+      <!-- 範囲マーカー & ジャンプ -->
       <div class="control-group">
+        <button id="jumpInBtnControls" class="btn" title="開始点 (In) へ移動 (I または Home)">
+          <span>⏮️ Inへ</span>
+        </button>
         <button id="setInBtn" class="btn" title="現在位置を開始点に設定 ([)">
-          <span>[ 開始点 (In)</span>
+          <span>[ 開始点</span>
         </button>
         <button id="setOutBtn" class="btn" title="現在位置を終了点に設定 (])">
-          <span>終了点 (Out) ]</span>
+          <span>終了点 ]</span>
+        </button>
+        <button id="jumpOutBtnControls" class="btn" title="終了点 (Out) へ移動 (O または End)">
+          <span>Outへ ⏭️</span>
         </button>
         <button id="loopBtn" class="btn" title="選択範囲をループ再生 (L)">
           <span>🔁 ループ: OFF</span>
@@ -79,6 +85,8 @@ export class Controls {
     this.playBtn = this.container.querySelector('#playBtn') as HTMLButtonElement;
     this.prevFrameBtn = this.container.querySelector('#prevFrameBtn') as HTMLButtonElement;
     this.nextFrameBtn = this.container.querySelector('#nextFrameBtn') as HTMLButtonElement;
+    const jumpInBtnControls = this.container.querySelector('#jumpInBtnControls') as HTMLButtonElement;
+    const jumpOutBtnControls = this.container.querySelector('#jumpOutBtnControls') as HTMLButtonElement;
     this.setInBtn = this.container.querySelector('#setInBtn') as HTMLButtonElement;
     this.setOutBtn = this.container.querySelector('#setOutBtn') as HTMLButtonElement;
     this.loopBtn = this.container.querySelector('#loopBtn') as HTMLButtonElement;
@@ -87,11 +95,19 @@ export class Controls {
     this.endTimeInput = this.container.querySelector('#endTimeInput') as HTMLInputElement;
     this.durationBadge = this.container.querySelector('#durationBadge') as HTMLElement;
 
-    this.setupEvents();
-    this.appState.subscribe((state, key) => this.onStateChange(state, key));
+    this.setupEvents(jumpInBtnControls, jumpOutBtnControls);
+    this.appState.subscribe((state, key) => this.onStateChange(state, key, jumpInBtnControls, jumpOutBtnControls));
   }
 
-  private setupEvents(): void {
+  private setupEvents(jumpInBtnControls: HTMLButtonElement, jumpOutBtnControls: HTMLButtonElement): void {
+    jumpInBtnControls.addEventListener('click', () => {
+      this.appState.jumpToStart();
+    });
+
+    jumpOutBtnControls.addEventListener('click', () => {
+      this.appState.jumpToEnd();
+    });
+
     this.playBtn.addEventListener('click', () => {
       this.appState.togglePlay();
     });
@@ -148,6 +164,14 @@ export class Controls {
       if (e.code === 'Space') {
         e.preventDefault();
         this.appState.togglePlay();
+      } else if (e.key === '{' || (e.shiftKey && e.key === '[') || e.key === 'i' || e.key === 'I' || e.key === 'Home') {
+        // 開始地点へジャンプ
+        e.preventDefault();
+        this.appState.jumpToStart();
+      } else if (e.key === '}' || (e.shiftKey && e.key === ']') || e.key === 'o' || e.key === 'O' || e.key === 'End') {
+        // 終了地点へジャンプ
+        e.preventDefault();
+        this.appState.jumpToEnd();
       } else if (e.key === '[') {
         const state = this.appState.getState();
         this.appState.setStartTime(state.currentTime);
@@ -175,13 +199,20 @@ export class Controls {
     });
   }
 
-  private onStateChange(state: AppStateData, changedKey?: keyof AppStateData): void {
+  private onStateChange(
+    state: AppStateData,
+    changedKey?: keyof AppStateData,
+    jumpInBtnControls?: HTMLButtonElement,
+    jumpOutBtnControls?: HTMLButtonElement
+  ): void {
     const hasVideo = state.videoFile !== null;
     this.playBtn.disabled = !hasVideo;
     this.prevFrameBtn.disabled = !hasVideo;
     this.nextFrameBtn.disabled = !hasVideo;
     this.setInBtn.disabled = !hasVideo;
     this.setOutBtn.disabled = !hasVideo;
+    if (jumpInBtnControls) jumpInBtnControls.disabled = !hasVideo;
+    if (jumpOutBtnControls) jumpOutBtnControls.disabled = !hasVideo;
     this.loopBtn.disabled = !hasVideo;
     this.speedSelect.disabled = !hasVideo;
     this.startTimeInput.disabled = !hasVideo;

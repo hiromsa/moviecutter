@@ -44,19 +44,31 @@ export class HelpModal {
         </div>
 
         <div>
-          <h4 style="margin-bottom: 0.5rem; font-size: 0.95rem; color: var(--accent-range);">⌨️ キーボードショートカット</h4>
+          <h4 style="margin-bottom: 0.5rem; font-size: 0.95rem; color: var(--accent-range);">⌨️ キーボードショートカット & 操作</h4>
           <table class="shortcut-table">
             <tr>
               <td><span class="kbd">Space</span></td>
               <td>再生 / 一時停止</td>
             </tr>
             <tr>
+              <td><span class="kbd">I</span> / <span class="kbd">Home</span></td>
+              <td>キャレットを開始地点 (In) へ移動</td>
+            </tr>
+            <tr>
+              <td><span class="kbd">O</span> / <span class="kbd">End</span></td>
+              <td>キャレットを終了地点 (Out) へ移動</td>
+            </tr>
+            <tr>
               <td><span class="kbd">[</span></td>
-              <td>現在の再生位置を開始地点 (In) に設定</td>
+              <td>現在のキャレット位置を開始地点 (In) に設定</td>
             </tr>
             <tr>
               <td><span class="kbd">]</span></td>
-              <td>現在の再生位置を終了地点 (Out) に設定</td>
+              <td>現在のキャレット位置を終了地点 (Out) に設定</td>
+            </tr>
+            <tr>
+              <td><span class="kbd">Alt</span> + <span class="kbd">ホイール</span></td>
+              <td>タイムラインのズームイン / ズームアウト</td>
             </tr>
             <tr>
               <td><span class="kbd">←</span> / <span class="kbd">→</span></td>
@@ -71,6 +83,15 @@ export class HelpModal {
               <td>選択範囲のループ再生 ON / OFF</td>
             </tr>
           </table>
+        </div>
+
+        <div>
+          <h4 style="margin-bottom: 0.5rem; font-size: 0.95rem; color: #38bdf8;">📁 ファイルの保存先と拡張子について</h4>
+          <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6;">
+            - 保存ボタンを押すと、Chrome/Edge等のブラウザでは<strong>「名前を付けて保存」ダイアログ</strong>が開き、保存先フォルダとファイル名を確認・選択できます。<br>
+            - ダイアログが開かない環境では、ブラウザ標準の<strong>「ダウンロード」フォルダ</strong>（通常はPCのダウンロードフォルダ）へ自動保存されます。<br>
+            - 切り取り動画には必ず <code>.mp4</code>、画像には <code>.png</code> の拡張子が付与されます。
+          </p>
         </div>
 
         <div style="font-size: 0.75rem; color: var(--text-dim); border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.75rem; display: flex; justify-content: space-between;">

@@ -26,6 +26,7 @@ export interface AppStateData {
   videoWidth: number;
   videoHeight: number;
   fps: number;
+  timelineZoom: number;
   ffmpegStatus: FFmpegStatus;
   ffmpegProgress: number;
   statusMessage: string;
@@ -53,6 +54,7 @@ export class AppState {
     videoWidth: 0,
     videoHeight: 0,
     fps: 30,
+    timelineZoom: 1.0,
     ffmpegStatus: 'unloaded',
     ffmpegProgress: 0,
     statusMessage: '動画ファイルを選択またはドラッグ＆ドロップしてください',
@@ -171,6 +173,21 @@ export class AppState {
     this.state.volume = volume;
     this.state.isMuted = isMuted;
     this.notify('volume');
+  }
+
+  public setTimelineZoom(zoom: number): void {
+    const clamped = Math.max(1.0, Math.min(10.0, zoom));
+    if (Math.abs(this.state.timelineZoom - clamped) < 0.01) return;
+    this.state.timelineZoom = clamped;
+    this.notify('timelineZoom');
+  }
+
+  public jumpToStart(): void {
+    this.setCurrentTime(this.state.startTime);
+  }
+
+  public jumpToEnd(): void {
+    this.setCurrentTime(this.state.endTime);
   }
 
   public stepFrame(direction: 1 | -1): void {
