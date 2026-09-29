@@ -455,7 +455,7 @@ body {
   width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 4px;
+  padding-bottom: 22px; /* 波形下部のキャレットハンドル表示領域を確保 */
 }
 
 .timeline-scroll-viewport::-webkit-scrollbar {
@@ -481,7 +481,7 @@ body {
   transition: width 0.1s ease-out;
 }
 
-/* ルーラー（キャレット専用シーク＆スクラブ領域） */
+/* ルーラー（時間軸：上下ドラッグでズームイン/アウト、クリックでシーク） */
 .timeline-ruler {
   position: relative;
   height: 24px;
@@ -490,7 +490,7 @@ body {
   color: var(--text-dim);
   user-select: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  cursor: pointer;
+  cursor: ns-resize; /* 上下ドラッグでズーム可能であることを明示 */
   background: rgba(255, 255, 255, 0.02);
   border-radius: var(--radius-xs) var(--radius-xs) 0 0;
 }
@@ -655,11 +655,11 @@ body {
   transform: translateX(-50%); /* ズレを解消！Outも中央基準 */
 }
 
-/* 再生ヘッド (Playhead) - 縦線は貫通させ、ルーラー上のつまみのみ掴めるように */
+/* 再生ヘッド (Playhead) - 縦線はルーラーから波形最下端まで貫通、波形の下につまみを配置 */
 .timeline-playhead {
   position: absolute;
   top: -28px; /* ルーラーの高さ分上まで突き出す */
-  bottom: -2px;
+  bottom: 0px; /* 波形トラックの最下端まで貫通 */
   width: 2px;
   background: var(--accent-playhead);
   z-index: 30;
@@ -668,22 +668,31 @@ body {
   transform: translateX(-50%); /* 中央合わせ */
 }
 
-.playhead-head {
+/* 波形の下部に配置された再生ヘッドハンドル（上向き矢印型） */
+.playhead-handle-bottom {
   position: absolute;
-  top: 0;
+  bottom: -18px; /* 波形の下端から下へ突き出す */
   left: 50%;
   transform: translateX(-50%);
-  width: 14px;
-  height: 16px;
+  width: 16px;
+  height: 18px;
   background: var(--accent-playhead);
-  clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%);
+  /* 上を指す五角形（矢印形状） */
+  clip-path: polygon(50% 0%, 100% 35%, 100% 100%, 0% 100%, 0% 35%);
   cursor: grab;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
-  pointer-events: auto; /* ルーラー上でのみ掴んでスクラブ可能 */
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.7);
+  pointer-events: auto; /* つまんでスクラブ可能 */
+  transition: transform 0.12s ease, filter 0.12s ease;
 }
 
-.playhead-head:active {
+.playhead-handle-bottom:hover {
+  transform: translateX(-50%) scale(1.15);
+  filter: brightness(1.2);
+}
+
+.playhead-handle-bottom:active {
   cursor: grabbing;
+  transform: translateX(-50%) scale(1.08);
 }
 
 /* コントロールバー */

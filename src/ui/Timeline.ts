@@ -74,7 +74,7 @@ export class Timeline {
 
     this.playheadEl = document.createElement('div');
     this.playheadEl.className = 'timeline-playhead';
-    this.playheadEl.innerHTML = '<div class="playhead-head" title="再生ヘッド - ドラッグして移動"></div>';
+    this.playheadEl.innerHTML = '<div class="playhead-handle-bottom" title="再生ヘッド - ドラッグして移動"></div>';
 
     this.init();
   }
@@ -193,9 +193,10 @@ export class Timeline {
       }, 1000);
     });
 
-    // ① ルーラー領域でのシーク＆ドラッグ（ハンドルに邪魔されない専用キャレット操作）
+    // ① 再生ヘッド（キャレット）のスクラブ処理
     const startPlayheadScrubbing = (e: MouseEvent) => {
       e.preventDefault();
+      e.stopPropagation();
       this.isDraggingPlayhead = true;
       this.updatePlayheadFromMouseEvent(e);
 
@@ -215,17 +216,74 @@ export class Timeline {
       window.addEventListener('mouseup', onMouseUp);
     };
 
-    // ルーラー領域クリック＆ドラッグ
-    this.rulerEl.addEventListener('mousedown', startPlayheadScrubbing);
-
-    // 再生ヘッドのつまみ（ルーラー上の頭部）のみドラッグ可能に
-    const playheadHeadEl = this.playheadEl.querySelector('.playhead-head') as HTMLElement;
-    if (playheadHeadEl) {
-      playheadHeadEl.addEventListener('mousedown', (e) => {
-        e.stopPropagation();
-        startPlayheadScrubbing(e);
-      });
+    // 波形の下部に配置されたキャレットハンドルのドラッグ
+    const playheadBottomHandleEl = this.playheadEl.querySelector('.playhead-handle-bottom') as HTMLElement;
+    if (playheadBottomHandleEl) {
+      playheadBottomHandleEl.addEventListener('mousedown', startPlayheadScrubbing);
     }
+
+    // ② ルーラー領域でのマウス操作：
+    // 上下ドラッグで時間軸の拡大/縮小（ズームイン・ズームアウト）
+    // 左右ドラッグで再生位置スクラブ、クリックでその時間へ移動
+    this.rulerEl.title = 'クリックで再生位置移動 / 上下ドラッグで拡大縮小';
+    this.rulerEl.addEventListener('mousedown', (e: MouseEvent) => {
+      e.preventDefault();
+      const startY = e.clientY;
+      const startX = e.clientX;
+      const initialZoom = this.appState.getState().timelineZoom;
+      const clickTime = this.getTimeFromMouseEvent(e);
+      const viewportRect = this.viewportEl.getBoundingClientRect();
+      const mouseViewportX = e.clientX - viewportRect.left;
+
+      let isZooming = false;
+      let isScrubbing = false;
+
+      const onMouseMove = (moveEvt: MouseEvent) => {
+        const deltaY = moveEvt.clientY - startY;
+        const deltaX = moveEvt.clientX - startX;
+
+        // モード未判定の場合、移動方向でズームかスクラブを決定
+        if (!isZooming && !isScrubbing) {
+          if (Math.abs(deltaY) >= 4 && Math.abs(deltaY) >= Math.abs(deltaX)) {
+            isZooming = true;
+            document.body.style.cursor = 'ns-resize';
+          } else if (Math.abs(deltaX) >= 6) {
+            isScrubbing = true;
+            document.body.style.cursor = 'ew-resize';
+          }
+        }
+
+        if (isZooming) {
+          // 上へドラッグ（deltaY < 0）で拡大、下へドラッグ（deltaY > 0）で縮小
+          const zoomDelta = -deltaY / 30;
+          const newZoom = Math.max(1, Math.min(10, initialZoom + zoomDelta));
+          this.appState.setTimelineZoom(newZoom);
+
+          // マウスカーソル位置の時間軸がズレにくいようスクロール調整
+          const duration = this.appState.getState().duration;
+          if (duration > 0) {
+            const ratio = clickTime / duration;
+            const newTrackWidth = this.viewportEl.clientWidth * newZoom;
+            this.viewportEl.scrollLeft = Math.max(0, ratio * newTrackWidth - mouseViewportX);
+          }
+        } else if (isScrubbing) {
+          this.updatePlayheadFromMouseEvent(moveEvt);
+        }
+      };
+
+      const onMouseUp = () => {
+        document.body.style.cursor = '';
+        if (!isZooming && !isScrubbing) {
+          // 移動量が少なければ通常のクリックシーク
+          this.appState.setCurrentTime(clickTime);
+        }
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+      };
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    });
 
     // ② トラック領域でのマウス操作：
     // ドラッグした時は「マウスダウン〜マウスアップ」で開始・終了を一括指定（ロック中は幅を維持してスライド）
