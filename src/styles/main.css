@@ -547,7 +547,7 @@ body {
   border-right: 1px solid rgba(0, 0, 0, 0.45);
 }
 
-/* 選択範囲 (Range Selection) */
+/* 選択範囲 (Range Selection) - ドラッグで範囲全体をスライド可能 */
 .timeline-range-highlight {
   position: absolute;
   top: 0;
@@ -555,9 +555,46 @@ body {
   background: var(--accent-range-bg);
   border-top: 2px solid var(--accent-range);
   border-bottom: 2px solid var(--accent-range);
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: grab;
+  user-select: none;
   box-shadow: 0 0 16px var(--accent-range-glow);
   z-index: 10;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.timeline-range-highlight:hover {
+  background: rgba(16, 185, 129, 0.22);
+}
+
+.timeline-range-highlight.dragging {
+  cursor: grabbing !important;
+  background: rgba(16, 185, 129, 0.32);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.45);
+}
+
+/* 時間ロック中の範囲スタイル */
+.timeline-range-highlight.locked {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(16, 185, 129, 0.12),
+    rgba(16, 185, 129, 0.12) 8px,
+    rgba(16, 185, 129, 0.22) 8px,
+    rgba(16, 185, 129, 0.22) 16px
+  );
+  border-top: 2px solid #34d399;
+  border-bottom: 2px solid #34d399;
+  box-shadow: 0 0 18px rgba(52, 211, 153, 0.4);
+}
+
+.timeline-range-highlight.locked.dragging {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(16, 185, 129, 0.2),
+    rgba(16, 185, 129, 0.2) 8px,
+    rgba(16, 185, 129, 0.35) 8px,
+    rgba(16, 185, 129, 0.35) 16px
+  );
 }
 
 /* 範囲ハンドル (In / Out) */
@@ -701,6 +738,77 @@ body {
 
 .time-field input:focus {
   color: var(--primary);
+}
+
+/* 切り取り時間（長さ）入力フィールド & ロックトグル */
+.duration-input-field {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.duration-input-field label {
+  color: var(--accent-range);
+}
+
+.duration-input-field input {
+  color: #a7f3d0;
+  width: 68px;
+  font-weight: 600;
+}
+
+.duration-input-field input:focus {
+  color: #34d399;
+}
+
+/* ロックボタン */
+.lock-duration-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: var(--radius-xs);
+  transition: all 0.18s ease;
+  margin-left: 2px;
+}
+
+.lock-duration-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.lock-duration-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ロック中状態のアクティブスタイル */
+.duration-input-field.locked {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+}
+
+.duration-input-field.locked label {
+  color: #34d399;
+}
+
+.duration-input-field.locked input {
+  color: #ffffff;
+}
+
+.duration-input-field.locked .lock-duration-btn {
+  color: #34d399;
+}
+
+.duration-input-field.locked .lock-duration-btn:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.25);
+  color: #6ee7b7;
 }
 
 .duration-chip {

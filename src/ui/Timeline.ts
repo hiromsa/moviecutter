@@ -219,27 +219,44 @@ export class Timeline {
     }
 
     // ② トラック領域でのマウス操作：
-    // ドラッグした時は「マウスダウン〜マウスアップ」で開始・終了を一括指定
+    // ドラッグした時は「マウスダウン〜マウスアップ」で開始・終了を一括指定（ロック中は幅を維持してスライド）
     // 単なるクリックの時はキャレットを移動
     this.trackEl.addEventListener('mousedown', (e) => {
-      if (e.target === this.inHandleEl || e.target === this.outHandleEl) return;
+      if (e.target === this.inHandleEl || e.target === this.outHandleEl || e.target === this.rangeHighlightEl) return;
 
       const startX = e.clientX;
-      const startTime = this.getTimeFromMouseEvent(e);
+      const initialTime = this.getTimeFromMouseEvent(e);
+      const isLocked = this.appState.getState().isDurationLocked;
+      const initialStart = this.appState.getState().startTime;
+      const initialEnd = this.appState.getState().endTime;
+      const rangeLen = Math.max(0.05, initialEnd - initialStart);
+      const duration = this.appState.getState().duration;
+      const rect = this.trackEl.getBoundingClientRect();
+
       let isRangeDragging = false;
 
       const onMouseMove = (moveEvt: MouseEvent) => {
         const dx = Math.abs(moveEvt.clientX - startX);
-        if (!isRangeDragging && dx >= 6) {
+        if (!isRangeDragging && dx >= 4) {
           isRangeDragging = true;
         }
 
         if (isRangeDragging) {
-          const currentTime = this.getTimeFromMouseEvent(moveEvt);
-          const s = Math.min(startTime, currentTime);
-          const end = Math.max(startTime, currentTime);
-          this.appState.setRange(s, end);
-          this.appState.setCurrentTime(currentTime);
+          if (isLocked) {
+            // ロック時: クリックした差分だけ範囲全体をスライド移動
+            const deltaX = moveEvt.clientX - startX;
+            const deltaSec = rect.width > 0 ? (deltaX / rect.width) * duration : 0;
+            const newStart = Math.max(0, Math.min(duration - rangeLen, initialStart + deltaSec));
+            this.appState.setRange(newStart, newStart + rangeLen);
+            this.appState.setCurrentTime(newStart);
+          } else {
+            // 通常時: ドラッグ開始点〜現在点を選択範囲とする
+            const currentTime = this.getTimeFromMouseEvent(moveEvt);
+            const s = Math.min(initialTime, currentTime);
+            const end = Math.max(initialTime, currentTime);
+            this.appState.setRange(s, end);
+            this.appState.setCurrentTime(currentTime);
+          }
         }
       };
 
@@ -248,7 +265,7 @@ export class Timeline {
         window.removeEventListener('mouseup', onMouseUp);
 
         if (!isRangeDragging) {
-          // 単なるクリック（移動距離6px未満）だった場合はキャレットをシーク
+          // 単なるクリックだった場合はキャレットをシーク
           const clickTime = this.getTimeFromMouseEvent(upEvt);
           this.appState.setCurrentTime(clickTime);
         }
@@ -258,16 +275,58 @@ export class Timeline {
       window.addEventListener('mouseup', onMouseUp);
     });
 
-    // ③ Inハンドル ドラッグ（個別微調整）
+    // ③ 選択範囲ハイライト自体のドラッグ（範囲をまるごと左右スライド）
+    this.rangeHighlightEl.addEventListener('mousedown', (e) => {
+      if (e.target === this.inHandleEl || e.target === this.outHandleEl) return;
+      e.stopPropagation();
+
+      const startX = e.clientX;
+      const initialStart = this.appState.getState().startTime;
+      const initialEnd = this.appState.getState().endTime;
+      const rangeLen = initialEnd - initialStart;
+      const duration = this.appState.getState().duration;
+      const rect = this.trackEl.getBoundingClientRect();
+
+      this.rangeHighlightEl.classList.add('dragging');
+
+      const onMouseMove = (moveEvt: MouseEvent) => {
+        const deltaX = moveEvt.clientX - startX;
+        const deltaSec = rect.width > 0 ? (deltaX / rect.width) * duration : 0;
+        const newStart = Math.max(0, Math.min(duration - rangeLen, initialStart + deltaSec));
+        const newEnd = newStart + rangeLen;
+        this.appState.setRange(newStart, newEnd);
+        this.appState.setCurrentTime(newStart);
+      };
+
+      const onMouseUp = () => {
+        this.rangeHighlightEl.classList.remove('dragging');
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+      };
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    });
+
+    // ④ Inハンドル ドラッグ（個別微調整、ロック中は長さを維持して全体スライド）
     this.inHandleEl.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       this.isDraggingIn = true;
+      const isLocked = this.appState.getState().isDurationLocked;
+      const rangeLen = this.appState.getState().endTime - this.appState.getState().startTime;
+      const duration = this.appState.getState().duration;
 
       const onMouseMove = (moveEvt: MouseEvent) => {
         if (this.isDraggingIn) {
           const time = this.getTimeFromMouseEvent(moveEvt);
-          this.appState.setStartTime(time);
-          this.appState.setCurrentTime(time);
+          if (isLocked) {
+            const clamped = Math.max(0, Math.min(duration - rangeLen, time));
+            this.appState.setRange(clamped, clamped + rangeLen);
+            this.appState.setCurrentTime(clamped);
+          } else {
+            this.appState.setStartTime(time);
+            this.appState.setCurrentTime(time);
+          }
         }
       };
 
@@ -281,16 +340,25 @@ export class Timeline {
       window.addEventListener('mouseup', onMouseUp);
     });
 
-    // ④ Outハンドル ドラッグ（個別微調整）
+    // ⑤ Outハンドル ドラッグ（個別微調整、ロック中は長さを維持して全体スライド）
     this.outHandleEl.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       this.isDraggingOut = true;
+      const isLocked = this.appState.getState().isDurationLocked;
+      const rangeLen = this.appState.getState().endTime - this.appState.getState().startTime;
+      const duration = this.appState.getState().duration;
 
       const onMouseMove = (moveEvt: MouseEvent) => {
         if (this.isDraggingOut) {
           const time = this.getTimeFromMouseEvent(moveEvt);
-          this.appState.setEndTime(time);
-          this.appState.setCurrentTime(time);
+          if (isLocked) {
+            const clamped = Math.max(rangeLen, Math.min(duration, time));
+            this.appState.setRange(clamped - rangeLen, clamped);
+            this.appState.setCurrentTime(clamped);
+          } else {
+            this.appState.setEndTime(time);
+            this.appState.setCurrentTime(time);
+          }
         }
       };
 
@@ -401,6 +469,14 @@ export class Timeline {
 
     this.rangeHighlightEl.style.left = `${inPercent}%`;
     this.rangeHighlightEl.style.width = `${Math.max(0, outPercent - inPercent)}%`;
+
+    if (state.isDurationLocked) {
+      this.rangeHighlightEl.classList.add('locked');
+      this.rangeHighlightEl.title = '時間ロック中: ドラッグでこの範囲のままスライド移動できます';
+    } else {
+      this.rangeHighlightEl.classList.remove('locked');
+      this.rangeHighlightEl.title = 'ドラッグで選択範囲をスライド移動できます';
+    }
 
     this.playheadEl.style.left = `${playheadPercent}%`;
 

@@ -1,5 +1,4 @@
 import { AppState, AppStateData } from '../state/AppState';
-import { VideoEngine } from '../core/VideoEngine';
 import { Icons } from './icons';
 
 export class Controls {
@@ -16,7 +15,9 @@ export class Controls {
   private speedSelect!: HTMLSelectElement;
   private startTimeInput!: HTMLInputElement;
   private endTimeInput!: HTMLInputElement;
-  private durationBadge!: HTMLElement;
+  private durationInput!: HTMLInputElement;
+  private lockDurationBtn!: HTMLButtonElement;
+  private durationInputField!: HTMLElement;
 
   constructor() {
     this.appState = AppState.getInstance();
@@ -79,7 +80,7 @@ export class Controls {
         </select>
       </div>
 
-      <!-- 時間入力 -->
+      <!-- 時間入力 & 切り取り時間（長さ指定・ロック） -->
       <div class="time-inputs-wrapper">
         <div class="time-field" title="開始秒数">
           <label>IN</label>
@@ -89,8 +90,12 @@ export class Controls {
           <label>OUT</label>
           <input type="number" id="endTimeInput" step="0.01" min="0" value="0.00">
         </div>
-        <div class="duration-chip" id="durationBadge" title="選択範囲の長さ">
-          0.00s
+        <div class="time-field duration-input-field" id="durationInputField" title="切り取り時間 (秒) - 入力すると終了点が自動計算されます">
+          <label>長さ</label>
+          <input type="number" id="durationInput" step="0.01" min="0.05" value="0.00">
+          <button id="lockDurationBtn" class="lock-duration-btn" title="時間をロック (長さを固定したまま範囲をドラッグ移動)">
+            ${Icons.unlock}
+          </button>
         </div>
       </div>
     `;
@@ -107,7 +112,9 @@ export class Controls {
     this.speedSelect = this.container.querySelector('#speedSelect') as HTMLSelectElement;
     this.startTimeInput = this.container.querySelector('#startTimeInput') as HTMLInputElement;
     this.endTimeInput = this.container.querySelector('#endTimeInput') as HTMLInputElement;
-    this.durationBadge = this.container.querySelector('#durationBadge') as HTMLElement;
+    this.durationInput = this.container.querySelector('#durationInput') as HTMLInputElement;
+    this.lockDurationBtn = this.container.querySelector('#lockDurationBtn') as HTMLButtonElement;
+    this.durationInputField = this.container.querySelector('#durationInputField') as HTMLElement;
 
     this.setupEvents(jumpInBtnControls, jumpOutBtnControls);
     this.appState.subscribe((state, key) => this.onStateChange(state, key, jumpInBtnControls, jumpOutBtnControls));
@@ -136,12 +143,24 @@ export class Controls {
 
     this.setInBtn.addEventListener('click', () => {
       const state = this.appState.getState();
-      this.appState.setStartTime(state.currentTime);
+      if (state.isDurationLocked) {
+        // ロック中の場合は長さを維持して開始点を現在の位置へ移動
+        const len = state.endTime - state.startTime;
+        this.appState.setRange(state.currentTime, state.currentTime + len);
+      } else {
+        this.appState.setStartTime(state.currentTime);
+      }
     });
 
     this.setOutBtn.addEventListener('click', () => {
       const state = this.appState.getState();
-      this.appState.setEndTime(state.currentTime);
+      if (state.isDurationLocked) {
+        // ロック中の場合は長さを維持して終了点を現在の位置へ移動
+        const len = state.endTime - state.startTime;
+        this.appState.setRange(state.currentTime - len, state.currentTime);
+      } else {
+        this.appState.setEndTime(state.currentTime);
+      }
     });
 
     this.loopBtn.addEventListener('click', () => {
@@ -157,20 +176,42 @@ export class Controls {
     this.startTimeInput.addEventListener('change', () => {
       const val = parseFloat(this.startTimeInput.value);
       if (!isNaN(val)) {
-        this.appState.setStartTime(val);
+        if (this.appState.getState().isDurationLocked) {
+          const len = this.appState.getState().endTime - this.appState.getState().startTime;
+          this.appState.setRange(val, val + len);
+        } else {
+          this.appState.setStartTime(val);
+        }
       }
     });
 
     this.endTimeInput.addEventListener('change', () => {
       const val = parseFloat(this.endTimeInput.value);
       if (!isNaN(val)) {
-        this.appState.setEndTime(val);
+        if (this.appState.getState().isDurationLocked) {
+          const len = this.appState.getState().endTime - this.appState.getState().startTime;
+          this.appState.setRange(val - len, val);
+        } else {
+          this.appState.setEndTime(val);
+        }
       }
+    });
+
+    // 切り取り時間（長さ）入力による終了点の自動変更
+    this.durationInput.addEventListener('change', () => {
+      const val = parseFloat(this.durationInput.value);
+      if (!isNaN(val) && val > 0) {
+        this.appState.setClipDuration(val);
+      }
+    });
+
+    // 時間ロックトグル
+    this.lockDurationBtn.addEventListener('click', () => {
+      this.appState.toggleDurationLock();
     });
 
     // キーボードショートカット
     window.addEventListener('keydown', (e) => {
-      // inputにフォーカスがある時はショートカット無効
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
         return;
       }
@@ -179,19 +220,27 @@ export class Controls {
         e.preventDefault();
         this.appState.togglePlay();
       } else if (e.key === '{' || (e.shiftKey && e.key === '[') || e.key === 'i' || e.key === 'I' || e.key === 'Home') {
-        // 開始地点へジャンプ
         e.preventDefault();
         this.appState.jumpToStart();
       } else if (e.key === '}' || (e.shiftKey && e.key === ']') || e.key === 'o' || e.key === 'O' || e.key === 'End') {
-        // 終了地点へジャンプ
         e.preventDefault();
         this.appState.jumpToEnd();
       } else if (e.key === '[') {
         const state = this.appState.getState();
-        this.appState.setStartTime(state.currentTime);
+        if (state.isDurationLocked) {
+          const len = state.endTime - state.startTime;
+          this.appState.setRange(state.currentTime, state.currentTime + len);
+        } else {
+          this.appState.setStartTime(state.currentTime);
+        }
       } else if (e.key === ']') {
         const state = this.appState.getState();
-        this.appState.setEndTime(state.currentTime);
+        if (state.isDurationLocked) {
+          const len = state.endTime - state.startTime;
+          this.appState.setRange(state.currentTime - len, state.currentTime);
+        } else {
+          this.appState.setEndTime(state.currentTime);
+        }
       } else if (e.code === 'ArrowLeft') {
         e.preventDefault();
         if (e.shiftKey) {
@@ -231,6 +280,8 @@ export class Controls {
     this.speedSelect.disabled = !hasVideo;
     this.startTimeInput.disabled = !hasVideo;
     this.endTimeInput.disabled = !hasVideo;
+    this.durationInput.disabled = !hasVideo;
+    this.lockDurationBtn.disabled = !hasVideo;
 
     if (changedKey === 'isPlaying' || !changedKey) {
       this.playBtn.innerHTML = state.isPlaying ? Icons.pause : Icons.play;
@@ -261,6 +312,22 @@ export class Controls {
     }
 
     const duration = Math.max(0, state.endTime - state.startTime);
-    this.durationBadge.textContent = `${duration.toFixed(2)}s (${VideoEngine.formatTime(duration)})`;
+    if (document.activeElement !== this.durationInput) {
+      this.durationInput.value = duration.toFixed(2);
+    }
+
+    // ロック状態のUI反映
+    if (changedKey === 'isDurationLocked' || !changedKey) {
+      this.lockDurationBtn.innerHTML = state.isDurationLocked ? Icons.lock : Icons.unlock;
+      this.lockDurationBtn.title = state.isDurationLocked
+        ? '時間ロック中: 長さが固定されています (クリックで解除)'
+        : '時間をロック: 長さを固定して範囲をドラッグ移動';
+
+      if (state.isDurationLocked) {
+        this.durationInputField.classList.add('locked');
+      } else {
+        this.durationInputField.classList.remove('locked');
+      }
+    }
   }
 }

@@ -27,6 +27,7 @@ export interface AppStateData {
   videoHeight: number;
   fps: number;
   timelineZoom: number;
+  isDurationLocked: boolean;
   ffmpegStatus: FFmpegStatus;
   ffmpegProgress: number;
   statusMessage: string;
@@ -55,6 +56,7 @@ export class AppState {
     videoHeight: 0,
     fps: 30,
     timelineZoom: 1.0,
+    isDurationLocked: false,
     ffmpegStatus: 'unloaded',
     ffmpegProgress: 0,
     statusMessage: '動画ファイルを選択またはドラッグ＆ドロップしてください',
@@ -145,6 +147,65 @@ export class AppState {
     const e = Math.max(s + 0.05, Math.min(end, this.state.duration));
     this.state.startTime = s;
     this.state.endTime = e;
+    this.notify('startTime');
+    this.notify('endTime');
+  }
+
+  /**
+   * 切り取り時間（長さ）を直接指定して終了点を更新
+   */
+  public setClipDuration(seconds: number): void {
+    if (this.state.duration <= 0) return;
+    const clampedDuration = Math.max(0.05, Math.min(this.state.duration, seconds));
+
+    let newStart = this.state.startTime;
+    let newEnd = newStart + clampedDuration;
+
+    // もし動画の終端を超える場合は開始点を手前に寄せる
+    if (newEnd > this.state.duration) {
+      newEnd = this.state.duration;
+      newStart = Math.max(0, this.state.duration - clampedDuration);
+    }
+
+    this.state.startTime = newStart;
+    this.state.endTime = newEnd;
+    this.notify('startTime');
+    this.notify('endTime');
+  }
+
+  /**
+   * 時間ロックモードの切り替え
+   */
+  public toggleDurationLock(): void {
+    this.state.isDurationLocked = !this.state.isDurationLocked;
+    this.notify('isDurationLocked');
+  }
+
+  public setDurationLocked(locked: boolean): void {
+    this.state.isDurationLocked = locked;
+    this.notify('isDurationLocked');
+  }
+
+  /**
+   * 長さを固定したまま範囲全体を平行移動（スライド）
+   */
+  public moveRange(deltaSeconds: number): void {
+    if (this.state.duration <= 0) return;
+    const len = this.state.endTime - this.state.startTime;
+    let newStart = this.state.startTime + deltaSeconds;
+    let newEnd = newStart + len;
+
+    if (newStart < 0) {
+      newStart = 0;
+      newEnd = len;
+    }
+    if (newEnd > this.state.duration) {
+      newEnd = this.state.duration;
+      newStart = Math.max(0, this.state.duration - len);
+    }
+
+    this.state.startTime = newStart;
+    this.state.endTime = newEnd;
     this.notify('startTime');
     this.notify('endTime');
   }
