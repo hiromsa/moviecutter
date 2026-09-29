@@ -1,8 +1,8 @@
 # 開発進捗記録 (PROGRESS.md)
 
 ## 現在のステータス
-- **バージョン**: `v0.0.1-beta.21+d4547fa`
-- **フェーズ**: SNS・Twitter (X) OGP / Twitter Cards (summary_large_image) 対応と高品質バナー画像の設置完了
+- **バージョン**: `v0.0.1-beta.22+0b94bc9`
+- **フェーズ**: 実際のMovieCutter稼働スクリーンショットに基づく公式OGPバナー画像への差し替え完了
 
 ## 完了した作業
 - [x] プロジェクト初期化・Git設定 (`https://github.com/hiromsa/moviecutter`)
@@ -154,8 +154,16 @@
 ### 追加・改善機能
 - **Twitter / X カード（summary_large_image）＆ OGP 完全対応**:
   - `index.html` に Twitter カード（`twitter:card` = `summary_large_image`）および OGP メタタグ（タイトル、解説文、画像URL、画像サイズ）を完全実装。
-  - `public/ogp.jpg` に、近未来サイバーダークスタジオの世界観を表現した映画クオリティのハイクオリティOGPバナー画像（ネオンシアン波形、ホログラフィックフレーム、タイムラインUI）を新規配備。
-  - Twitter/X や Facebook、Discord、LINE等で `https://moviecutter.pages.dev/` を貼り付けた際に、目を引く美麗な大画面カードが自動展開されるよう対応。
+  - `public/ogp.jpg` に、映画クオリティのハイクオリティOGPバナー画像（ネオンシアン波形、ホログラフィックフレーム、タイムラインUI）を新規配備。
+
+
+## [v0.0.1-beta.22+0b94bc9] - 2026-09-29
+### 追加・改善機能
+- **実際のMovieCutterアプリ稼働画面に基づく公式OGPバナー画像の再生成・刷新**:
+  - AI生成の架空UIではなく、ユーザーから提供された実際のMovieCutterアプリ稼働画面（プレビュー、IN/OUTサイドバー、タイムライン波形トラック、操作パネル）をベース画像に採用。
+  - 中央に大きく「MovieCutter」のシザーアイコン付きブランドロゴ、タグライン、および「完全ローカル処理（情報収集ゼロ・サーバー送信なし）」バッジを配置。
+  - 1200x630（Twitter/X推奨OGP比率）に完璧に最適化し、実際のアプリであることが一目で伝わる信頼感と美しさを兼ね備えた公式バナーに刷新。
+
 
 
 
